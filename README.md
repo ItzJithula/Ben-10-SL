@@ -60,17 +60,28 @@ npm run db:reset             # delete the database (re-seeded on next start)
 |---|---|
 | URL | `http://localhost:3000/admin` |
 | Username | `admin` (or `ADMIN_USERNAME`) |
-| Password (development) | `ben10admin` — built-in starter password |
-| Password (production) | whatever you set in `ADMIN_PASSWORD` |
+| Password | the value you put in `ADMIN_PASSWORD` |
 
-> ⚠️ **The panel fails closed in production.** If `ADMIN_PASSWORD` is missing while
-> `NODE_ENV=production`, the starter password is *never* accepted — the admin area stays locked and
-> the server logs `ADMIN_PASSWORD is not set — the admin panel is locked in production.`
-> Set `ADMIN_PASSWORD` **and** `ADMIN_SESSION_SECRET` (`openssl rand -hex 32`) before going online.
-> Credential hints are only ever rendered while the built-in development password is in effect.
->
-> `ADMIN_SESSION_SECRET` is optional in development: when it is empty a random per-process key is
-> generated, which simply means sessions end whenever the server restarts.
+Credentials are **never committed** — they live in `.env.local` (gitignored) locally and in your
+host's environment variables in production:
+
+```bash
+cp .env.example .env.local
+# then open .env.local and set a password you will remember, e.g.
+#   ADMIN_PASSWORD=my-secret-admin-password
+#   ADMIN_SESSION_SECRET=  (optional — openssl rand -hex 32)
+```
+
+Behaviour:
+
+- **No `ADMIN_PASSWORD` in production** → the panel stays **locked** (fail closed) and the server
+  logs `ADMIN_PASSWORD is not set — the admin panel is locked in production.` The public site keeps
+  working normally.
+- **No `ADMIN_PASSWORD` in development** → a temporary password is generated for that process and
+  printed in the terminal, so you are never locked out and no default credential ever exists.
+- **`ADMIN_SESSION_SECRET` unset** → a random per-process key signs the session cookie, so sessions
+  simply end whenever the server restarts.
+- The login page never renders credentials.
 
 ---
 

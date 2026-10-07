@@ -4,40 +4,42 @@ import { cookies } from "next/headers";
 /**
  * Single-admin session handling.
  *
- * Credentials come from the environment:
+ * Credentials live in the environment — never in the repository:
  *   ADMIN_USERNAME        (optional, default "admin")
- *   ADMIN_PASSWORD        (REQUIRED in production — without it the panel stays locked)
- *   ADMIN_SESSION_SECRET  (optional; when unset a random per-process key is used,
- *                          which simply means sessions end when the server restarts)
+ *   ADMIN_PASSWORD        password for the panel
+ *   ADMIN_SESSION_SECRET  signing key for the session cookie (optional)
  *
- * While developing locally (`npm run dev`) the panel accepts the documented
- * default password so a fresh clone is usable straight away. In production the
- * default is never accepted: fail closed instead of shipping a public password.
+ * Rules:
+ *  - No password is ever hard-coded here. `ADMIN_PASSWORD` should be set in
+ *    `.env.local` (gitignored) locally and in the host's env vars in production.
+ *  - Production fails closed: without `ADMIN_PASSWORD` the panel stays locked.
+ *  - Development stays usable: if no password is configured a temporary one is
+ *    generated for the running process and printed to the server console.
+ *  - When `ADMIN_SESSION_SECRET` is not set, a random per-process key is used
+ *    (sessions then end when the server restarts).
  */
 
 export const SESSION_COOKIE = "b10_admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-/** Local-development convenience only — never used when NODE_ENV=production. */
-const DEV_DEFAULT_PASSWORD = ["ben10", "admin"].join("");
-
-/** Random fallback key, regenerated per process. */
+/** Random fallback signing key, regenerated per process. */
 const RUNTIME_SECRET = randomBytes(32).toString("hex");
 
-let warnedAboutPassword = false;
+let runtimePassword: string | null = null;
+let warnedInProduction = false;
 
 export function adminUsername(): string {
   return process.env.ADMIN_USERNAME?.trim() || "admin";
 }
 
-/** Returns the expected password, or null when the panel is disabled. */
+/** Returns the expected password, or null when the panel is locked. */
 function adminPassword(): string | null {
   const configured = process.env.ADMIN_PASSWORD?.trim();
   if (configured) return configured;
 
   if (process.env.NODE_ENV === "production") {
-    if (!warnedAboutPassword) {
-      warnedAboutPassword = true;
+    if (!warnedInProduction) {
+      warnedInProduction = true;
       console.error(
         "[Ben 10 SL] ADMIN_PASSWORD is not set — the admin panel is locked in production. " +
           "Set ADMIN_PASSWORD (and ADMIN_SESSION_SECRET) in your environment to enable it.",
@@ -46,17 +48,20 @@ function adminPassword(): string | null {
     return null;
   }
 
-  return DEV_DEFAULT_PASSWORD;
+  if (!runtimePassword) {
+    runtimePassword = randomBytes(12).toString("base64url");
+    console.warn(
+      "\n[Ben 10 SL] ADMIN_PASSWORD is not set.\n" +
+        `             Temporary admin password for this dev session: ${runtimePassword}\n` +
+        "             Add ADMIN_PASSWORD=… to .env.local to choose your own.\n",
+    );
+  }
+  return runtimePassword;
 }
 
-/** True when the panel is unlocked (a password is configured, or we are in dev). */
+/** True when the panel is unlocked (a password is configured or generated). */
 export function adminPanelEnabled(): boolean {
   return adminPassword() !== null;
-}
-
-/** True only while the built-in development password is in effect. */
-export function usingDevDefaultPassword(): boolean {
-  return !process.env.ADMIN_PASSWORD?.trim() && process.env.NODE_ENV !== "production";
 }
 
 function secret(): string {

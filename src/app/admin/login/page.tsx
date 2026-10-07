@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import AdminLoginForm from "@/components/admin/AdminLoginForm";
 import OmnitrixWatch from "@/components/OmnitrixWatch";
-import { adminPanelEnabled, adminUsername, isAdmin, usingDevDefaultPassword } from "@/lib/admin-auth";
+import { adminPanelEnabled, isAdmin } from "@/lib/admin-auth";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
@@ -16,8 +16,6 @@ export default async function AdminLoginPage() {
   if (await isAdmin()) redirect("/admin");
   const settings = getSettings();
   const panelEnabled = adminPanelEnabled();
-  const username = adminUsername();
-  const showDevHint = usingDevDefaultPassword();
 
   return (
     <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
@@ -47,20 +45,12 @@ export default async function AdminLoginPage() {
                 <code>ADMIN_SESSION_SECRET</code> සකසා සේවාදායකය නැවත අරඹන්න.
               </p>
             </div>
-          ) : showDevHint ? (
-            <div className="mt-6 rounded-xl border border-void-600 bg-void-950/60 p-4 text-[0.7rem] leading-relaxed text-void-200">
-              <p className="font-bold text-void-100">සංවර්ධන පිවිසුම් තොරතුරු</p>
-              <p className="mt-1">
-                පරිශීලක නාමය: <code className="text-omni-300">{username}</code> · මුරපදය:{" "}
-                <code className="text-omni-300">ben10admin</code>
-              </p>
-              <p className="mt-1">
-                නිෂ්පාදනයේදී <code className="text-omni-300">ADMIN_PASSWORD</code> සහ{" "}
-                <code className="text-omni-300">ADMIN_SESSION_SECRET</code> අනිවාර්යයෙන්ම සකසන්න — එවිට
-                මෙම තොරතුරු පෙන්වන්නේ නැත.
-              </p>
-            </div>
-          ) : null}
+          ) : (
+            <p className="mt-6 rounded-xl border border-void-600 bg-void-950/60 p-4 text-[0.7rem] leading-relaxed text-void-200">
+              පිවිසුම් තොරතුරු පරිසර විචල්‍යයෙන් (<code className="text-omni-300">ADMIN_PASSWORD</code>)
+              සකසා ඇත. ඒවා අමතක වූයේ නම් සේවාදායක ලොගය බලන්න හෝ පරිසර විචල්‍යය නැවත සකසන්න.
+            </p>
+          )}
 
           <Link
             href="/"
