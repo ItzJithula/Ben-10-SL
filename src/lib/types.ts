@@ -7,7 +7,8 @@ export type EpisodeType = "episode" | "movie" | "special" | "short";
 
 export type ReleaseStatus = "published" | "draft";
 
-export type AudioLanguage = "sinhala" | "sinhala-subbed" | "english-subbed";
+/** This fan site only distributes Sinhala dubbed audio. */
+export type AudioLanguage = "sinhala";
 
 export interface Category {
   id: number;
