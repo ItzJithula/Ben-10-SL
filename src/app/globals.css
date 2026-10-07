@@ -1,0 +1,313 @@
+@import "tailwindcss";
+@import "@fontsource-variable/orbitron";
+@import "@fontsource/rajdhani/400.css";
+@import "@fontsource/rajdhani/500.css";
+@import "@fontsource/rajdhani/600.css";
+@import "@fontsource/rajdhani/700.css";
+@import "@fontsource/noto-sans-sinhala/400.css";
+@import "@fontsource/noto-sans-sinhala/500.css";
+@import "@fontsource/noto-sans-sinhala/700.css";
+
+/* ------------------------------------------------------------------ */
+/* Ben 10 theme tokens                                                 */
+/* ------------------------------------------------------------------ */
+@theme {
+  /* Omnitrix green */
+  --color-omni-50: #eaffe0;
+  --color-omni-100: #d2ffbe;
+  --color-omni-200: #aaff7d;
+  --color-omni-300: #7dff3d;
+  --color-omni-400: #39ff14;
+  --color-omni-500: #22d300;
+  --color-omni-600: #17a000;
+  --color-omni-700: #0f7300;
+  --color-omni-800: #0a4d05;
+  --color-omni-900: #062e03;
+
+  /* Alien black / graphite */
+  --color-void-50: #e7ecea;
+  --color-void-100: #c3cfcb;
+  --color-void-200: #92a39e;
+  --color-void-300: #5f736e;
+  --color-void-400: #3a4a45;
+  --color-void-500: #253430;
+  --color-void-600: #17231f;
+  --color-void-700: #111917;
+  --color-void-800: #0b1110;
+  --color-void-900: #060a09;
+  --color-void-950: #030504;
+
+  /* Collection accents */
+  --color-alien-cyan: #00e5ff;
+  --color-alien-orange: #ff7a00;
+  --color-alien-purple: #b026ff;
+  --color-alien-amber: #ffc400;
+  --color-alien-magenta: #ff2e88;
+  --color-alien-red: #ff3b3b;
+
+  --font-display: "Orbitron Variable", "Noto Sans Sinhala", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Rajdhani", "Noto Sans Sinhala", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1.15rem;
+
+  --shadow-omni: 0 0 0 1px rgba(57, 255, 20, 0.25), 0 12px 40px -12px rgba(57, 255, 20, 0.55);
+  --shadow-omni-lg: 0 0 0 1px rgba(57, 255, 20, 0.35), 0 24px 70px -18px rgba(57, 255, 20, 0.65);
+
+  --animate-omni-spin: omni-spin 14s linear infinite;
+  --animate-omni-spin-rev: omni-spin-rev 22s linear infinite;
+  --animate-pulse-ring: pulse-ring 2.6s ease-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-scan: scan 6s linear infinite;
+  --animate-flicker: flicker 4.5s ease-in-out infinite;
+}
+
+@keyframes omni-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes omni-spin-rev {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+@keyframes scan {
+  0% {
+    transform: translateY(-120%);
+  }
+  100% {
+    transform: translateY(520%);
+  }
+}
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+  52% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 0.88;
+  }
+}
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    color-scheme: dark;
+    --accent: #39ff14;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Lenis takes over scrolling — disable the native smooth behaviour it fights with */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  body {
+    background-color: var(--color-void-900);
+    color: var(--color-void-50);
+    font-family: var(--font-body);
+    font-size: 1.02rem;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 12% -10%, rgba(57, 255, 20, 0.12), transparent 42%),
+      radial-gradient(circle at 88% 0%, rgba(0, 229, 255, 0.08), transparent 38%),
+      linear-gradient(180deg, #050807 0%, #070c0a 60%, #040706 100%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background: var(--color-omni-400);
+    color: #04120a;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #070d0b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #39ff14, #0f7300);
+    border-radius: 999px;
+    border: 2px solid #070d0b;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #aaff7d, #22d300);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Component-ish utilities                                             */
+/* ------------------------------------------------------------------ */
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 12px rgba(57, 255, 20, 0.65), 0 0 32px rgba(57, 255, 20, 0.35);
+  }
+
+  .panel {
+    background:
+      linear-gradient(180deg, rgba(17, 25, 23, 0.92), rgba(8, 13, 12, 0.92));
+    border: 1px solid rgba(57, 255, 20, 0.16);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(10px);
+  }
+
+  .panel-hover {
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease,
+      box-shadow 0.35s ease;
+  }
+  .panel-hover:hover {
+    transform: translateY(-6px);
+    border-color: rgba(57, 255, 20, 0.55);
+    box-shadow: 0 18px 50px -20px rgba(57, 255, 20, 0.6);
+  }
+
+  .hex-grid {
+    background-image:
+      linear-gradient(30deg, rgba(57, 255, 20, 0.055) 12%, transparent 12.5%, transparent 87%, rgba(57, 255, 20, 0.055) 87.5%),
+      linear-gradient(150deg, rgba(57, 255, 20, 0.055) 12%, transparent 12.5%, transparent 87%, rgba(57, 255, 20, 0.055) 87.5%),
+      linear-gradient(30deg, rgba(57, 255, 20, 0.055) 12%, transparent 12.5%, transparent 87%, rgba(57, 255, 20, 0.055) 87.5%),
+      linear-gradient(150deg, rgba(57, 255, 20, 0.055) 12%, transparent 12.5%, transparent 87%, rgba(57, 255, 20, 0.055) 87.5%),
+      linear-gradient(60deg, rgba(57, 255, 20, 0.035) 25%, transparent 25.5%, transparent 75%, rgba(57, 255, 20, 0.035) 75%);
+    background-size: 42px 74px;
+    background-position: 0 0, 0 0, 21px 37px, 21px 37px, 0 0;
+  }
+
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.035) 0px,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: overlay;
+  }
+
+  .glitch-text {
+    position: relative;
+    display: inline-block;
+  }
+  .glitch-text::before,
+  .glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    clip-path: inset(0 0 55% 0);
+  }
+  .glitch-text::before {
+    color: #00e5ff;
+    transform: translate(-2px, -1px);
+    opacity: 0.55;
+    animation: flicker 5s ease-in-out infinite;
+  }
+  .glitch-text::after {
+    color: #ff2e88;
+    transform: translate(2px, 1px);
+    clip-path: inset(58% 0 0 0);
+    opacity: 0.5;
+    animation: flicker 4s ease-in-out infinite reverse;
+  }
+
+  .green-grid-fade {
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+  }
+
+  .marquee-track {
+    animation: marquee 28s linear infinite;
+  }
+
+  .reveal-up {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-up.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

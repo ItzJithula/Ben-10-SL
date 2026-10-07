@@ -1,0 +1,147 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import FilterBar from "@/components/FilterBar";
+import Pagination from "@/components/Pagination";
+import ReleaseCard from "@/components/ReleaseCard";
+import Reveal from "@/components/Reveal";
+import { getCategoryBySlug, listCategories, listReleases } from "@/lib/queries";
+
+type Params = Promise<{ slug: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug } = await params;
+  const category = getCategoryBySlug(slug);
+  if (!category) return { title: "මාලාව හමු නොවිණි" };
+  return {
+    title: `${category.name} — සිංහල හඬකැවීම`,
+    description: category.description,
+  };
+}
+
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const { slug } = await params;
+  const query = await searchParams;
+  const category = getCategoryBySlug(slug);
+  if (!category) notFound();
+
+  const categories = listCategories();
+  const page = Number.parseInt(first(query.page) ?? "1", 10) || 1;
+
+  const result = listReleases({
+    category: slug,
+    type: first(query.type),
+    q: first(query.q),
+    sort: first(query.sort) ?? "episode",
+    page,
+    perPage: 12,
+  });
+
+  const makeHref = (targetPage: number) => {
+    const next = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      const single = first(value);
+      if (single && key !== "page") next.set(key, single);
+    }
+    if (targetPage > 1) next.set("page", String(targetPage));
+    return `/category/${slug}${next.toString() ? `?${next.toString()}` : ""}`;
+  };
+
+  return (
+    <div className="relative">
+      {/* collection banner */}
+      <section className="relative isolate overflow-hidden border-b border-omni-400/20">
+        <div
+          className="absolute inset-0 -z-10 opacity-25"
+          style={{ background: `radial-gradient(circle at 20% 20%, ${category.accent}, transparent 55%)` }}
+        />
+        <div className="hex-grid absolute inset-0 -z-10 opacity-40" />
+
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <nav className="mb-6 flex items-center gap-2 text-[0.7rem] font-bold tracking-wider text-void-200 uppercase">
+            <Link href="/" className="hover:text-omni-300">
+              මුල් පිටුව
+            </Link>
+            <span className="text-void-400">/</span>
+            <Link href="/releases" className="hover:text-omni-300">
+              නිකුතු
+            </Link>
+            <span className="text-void-400">/</span>
+            <span style={{ color: category.accent }}>{category.name}</span>
+          </nav>
+
+          <Reveal>
+            <p
+              className="mb-3 text-[0.66rem] font-black tracking-[0.34em] uppercase"
+              style={{ color: category.accent }}
+            >
+              Ben 10 මාලාව · {category.release_count} නිකුතු
+            </p>
+            <h1 className="font-display text-3xl font-black text-white sm:text-5xl">
+              {category.name_si || category.name}
+            </h1>
+            <p className="mt-3 text-sm font-bold tracking-[0.24em] text-void-200 uppercase">
+              {category.name}
+            </p>
+            <p className="mt-5 max-w-2xl text-sm leading-relaxed text-void-100">
+              {category.description}
+            </p>
+          </Reveal>
+
+          {/* sibling collections */}
+          <div className="mt-8 flex flex-wrap gap-2">
+            {categories
+              .filter((item) => item.slug !== category.slug)
+              .map((item) => (
+                <Link
+                  key={item.slug}
+                  href={`/category/${item.slug}`}
+                  className="rounded-full border px-4 py-1.5 text-xs font-bold transition-colors hover:text-white"
+                  style={{ borderColor: `${item.accent}55`, color: item.accent }}
+                >
+                  {item.name_si || item.name}
+                </Link>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <Reveal>
+          <FilterBar categories={categories} basePath={`/category/${slug}`} />
+        </Reveal>
+
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {result.items.map((release) => (
+            <Reveal key={release.id}>
+              <ReleaseCard release={release} />
+            </Reveal>
+          ))}
+        </div>
+
+        {result.items.length === 0 ? (
+          <div className="panel mt-8 p-12 text-center">
+            <p className="font-display text-lg font-black text-white">මෙම මාලාවේ නිකුතු තවම නැත</p>
+            <p className="mt-2 text-sm text-void-100">
+              ඉක්මනින්ම නව කථාංග එක් කෙරේ. ටෙලිග්‍රෑම් නාලිකාව හා සම්බන්ධ වන්න.
+            </p>
+          </div>
+        ) : null}
+
+        <Pagination page={result.page} pages={result.pages} makeHref={makeHref} />
+      </div>
+    </div>
+  );
+}
