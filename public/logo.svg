@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Ben 10 SL logo">
+  <defs>
+    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b6ff5c"/>
+      <stop offset="45%" stop-color="#6ef000"/>
+      <stop offset="100%" stop-color="#2ea800"/>
+    </linearGradient>
+    <linearGradient id="bolt2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d8ff8f"/>
+      <stop offset="55%" stop-color="#7cf400"/>
+      <stop offset="100%" stop-color="#1f8f00"/>
+    </linearGradient>
+    <filter id="glow" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5.5"/>
+    </filter>
+  </defs>
+
+  <rect width="128" height="128" rx="8" fill="#020603"/>
+  <circle cx="64" cy="64" r="57" fill="#04120a"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#4dff00" stroke-width="4.5" opacity="0.75" filter="url(#softglow)"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#c6ff7a" stroke-width="2.6"/>
+
+  <g filter="url(#glow)">
+    <!-- left bolt -->
+    <path d="M62 20 L30 62 L48 62 L38 108 L78 58 L56 58 L76 20 Z"
+          fill="url(#bolt)" stroke="#e9ffbe" stroke-width="1.2" stroke-linejoin="round"/>
+    <!-- right bolt (offset, gives the interlocked look) -->
+    <path d="M92 34 L60 76 L78 76 L68 122 L108 72 L86 72 L106 34 Z"
+          fill="url(#bolt2)" opacity="0.94" stroke="#e9ffbe" stroke-width="1.1" stroke-linejoin="round"/>
+  </g>
+</svg>
