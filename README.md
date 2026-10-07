@@ -60,9 +60,17 @@ npm run db:reset             # delete the database (re-seeded on next start)
 |---|---|
 | URL | `http://localhost:3000/admin` |
 | Username | `admin` (or `ADMIN_USERNAME`) |
-| Password | `ben10admin` (or `ADMIN_PASSWORD`) |
+| Password (development) | `ben10admin` — built-in starter password |
+| Password (production) | whatever you set in `ADMIN_PASSWORD` |
 
-> ⚠️ Change `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` in `.env.local` before going online.
+> ⚠️ **The panel fails closed in production.** If `ADMIN_PASSWORD` is missing while
+> `NODE_ENV=production`, the starter password is *never* accepted — the admin area stays locked and
+> the server logs `ADMIN_PASSWORD is not set — the admin panel is locked in production.`
+> Set `ADMIN_PASSWORD` **and** `ADMIN_SESSION_SECRET` (`openssl rand -hex 32`) before going online.
+> Credential hints are only ever rendered while the built-in development password is in effect.
+>
+> `ADMIN_SESSION_SECRET` is optional in development: when it is empty a random per-process key is
+> generated, which simply means sessions end whenever the server restarts.
 
 ---
 
@@ -161,7 +169,8 @@ Change a token once and the whole site (cards, buttons, glows, watch dial) follo
 ## 🌐 Deployment
 
 1. Push this repo to GitHub and import it on Vercel (or any Node host).
-2. Add environment variables: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `SITE_URL`.
+2. Add environment variables: `ADMIN_USERNAME`, **`ADMIN_PASSWORD` (required — the panel stays
+   locked without it)**, `ADMIN_SESSION_SECRET` (`openssl rand -hex 32`), `SITE_URL`.
 3. **Database:** SQLite lives on the local filesystem. On serverless platforms (Vercel) the
    filesystem is not persistent — either
    - run it on a VPS / Docker / Railway / Fly.io with a mounted volume (`DATA_DIR=/data`), or
