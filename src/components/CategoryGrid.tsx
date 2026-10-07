@@ -37,7 +37,7 @@ export default function CategoryGrid({ categories }: { categories: CategoryWithC
             </span>
 
             <h3 className="font-display text-lg font-black text-white transition-colors group-hover:text-omni-300">
-              {category.name_si || category.name}
+              {category.name_alt || category.name}
             </h3>
             <p className="mt-1 text-[0.7rem] font-bold tracking-[0.22em] text-void-200 uppercase">
               {category.name}
@@ -48,10 +48,10 @@ export default function CategoryGrid({ categories }: { categories: CategoryWithC
 
             <span className="mt-6 flex items-center justify-between border-t border-void-600/60 pt-4">
               <span className="font-display text-sm font-black" style={{ color: category.accent }}>
-                {category.release_count} නිකුතු
+                {category.release_count} releases
               </span>
               <span className="flex items-center gap-1 text-xs font-bold tracking-wider text-void-200 uppercase transition-colors group-hover:text-omni-300">
-                බලන්න
+                Browse
                 <svg
                   viewBox="0 0 24 24"
                   className="h-4 w-4 transition-transform group-hover:translate-x-1"

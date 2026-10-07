@@ -11,7 +11,7 @@ export default function OmnitrixWatch({
   size = 320,
   interactive = true,
   className,
-  label = "ඔම්නිට්‍රික්ස්",
+  label = "Omnitrix",
 }: {
   size?: number;
   interactive?: boolean;

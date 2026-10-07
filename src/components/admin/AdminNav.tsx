@@ -9,11 +9,11 @@ import { signOutAction } from "@/lib/actions";
 import { cx } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/admin", label: "එක්ස්කෑප්", hint: "Dashboard", icon: "grid" },
-  { href: "/admin/releases", label: "නිකුතු", hint: "Releases", icon: "list" },
-  { href: "/admin/releases/new", label: "නව නිකුතුව", hint: "New release", icon: "plus" },
-  { href: "/admin/categories", label: "මාලාවන්", hint: "Collections", icon: "layers" },
-  { href: "/admin/settings", label: "සැකසුම්", hint: "Settings", icon: "cog" },
+  { href: "/admin", label: "Dashboard", hint: "Overview", icon: "grid" },
+  { href: "/admin/releases", label: "Releases", hint: "Manage", icon: "list" },
+  { href: "/admin/releases/new", label: "New release", hint: "Publish", icon: "plus" },
+  { href: "/admin/categories", label: "Collections", hint: "Series", icon: "layers" },
+  { href: "/admin/settings", label: "Site settings", hint: "Branding", icon: "cog" },
 ];
 
 function Icon({ name }: { name: string }) {
@@ -59,7 +59,7 @@ export default function AdminNav({ logoUrl }: { logoUrl: string }) {
   return (
     <aside className="lg:sticky lg:top-24 lg:h-fit">
       <div className="panel p-5">
-        <Logo src={logoUrl} width={38} tagline="පරිපාලක පැනලය" />
+        <Logo src={logoUrl} width={38} tagline="Admin panel" />
 
         <nav className="mt-6 space-y-1.5">
           {LINKS.map((link) => {
@@ -98,14 +98,14 @@ export default function AdminNav({ logoUrl }: { logoUrl: string }) {
             href="/"
             className="flex items-center gap-2 rounded-xl border border-void-600 px-3.5 py-2.5 text-xs font-bold text-void-100 transition-colors hover:border-omni-400/50 hover:text-omni-300"
           >
-            ↗ වෙබ් අඩවිය බලන්න
+            ↗ View live site
           </Link>
           <form action={signOutAction}>
             <button
               type="submit"
               className="w-full rounded-xl border border-alien-red/35 px-3.5 py-2.5 text-xs font-bold text-alien-red transition-colors hover:bg-alien-red/10"
             >
-              පිවිසුමෙන් ඉවත් වන්න
+              Sign out
             </button>
           </form>
         </div>

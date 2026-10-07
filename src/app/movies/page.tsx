@@ -9,8 +9,8 @@ import { listReleases } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
-  title: "චිත්‍රපට හා විශේෂ නිකුතු",
-  description: "Ben 10 සම්පූර්ණ දිග සිංහල හඬකැවූ චිත්‍රපට හා විශේෂ නිකුතු.",
+  title: "Movies & Specials",
+  description: "Full-length Ben 10 movies and specials with Sinhala audio.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -21,18 +21,18 @@ function first(value: string | string[] | undefined) {
 
 export default async function MoviesPage({ searchParams }: { searchParams: SearchParams }) {
   const query = await searchParams;
-  const settings = getSettings();
+  const settings = await getSettings();
   const page = Number.parseInt(first(query.page) ?? "1", 10) || 1;
 
-  const result = listReleases({ type: "movie", page, perPage: 12, sort: "newest" });
+  const result = await listReleases({ type: "movie", page, perPage: 12, sort: "newest" });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <Reveal>
         <SectionHeading
-          kicker="මහා තිරය"
-          title="චිත්‍රපට හා විශේෂ නිකුතු"
-          subtitle="ටෙලි කථාංග මාලාවෙන් පිටත පැමිණි සම්පූර්ණ දිග චිත්‍රපට — සියල්ල සිංහල හඬකැවීමෙන්."
+          kicker="Feature length"
+          title="Movies & Specials"
+          subtitle="Full-length films from outside the TV seasons — every one dubbed in Sinhala."
         />
       </Reveal>
 
@@ -46,7 +46,7 @@ export default async function MoviesPage({ searchParams }: { searchParams: Searc
 
       {result.items.length === 0 ? (
         <div className="panel p-12 text-center">
-          <p className="font-display text-lg font-black text-white">චිත්‍රපට තවම එක් කර නැත</p>
+          <p className="font-display text-lg font-black text-white">No movies added yet</p>
         </div>
       ) : null}
 

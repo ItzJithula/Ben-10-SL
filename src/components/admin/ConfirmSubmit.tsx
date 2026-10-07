@@ -6,9 +6,9 @@ import { cx } from "@/lib/utils";
 /** Submit button that asks for confirmation — used for destructive admin actions. */
 export default function ConfirmSubmit({
   children,
-  message = "ඔබට විශ්වාසද? මෙය ආපසු හැරවිය නොහැක.",
+  message = "Are you sure? This cannot be undone.",
   className,
-  pendingLabel = "සිදු වෙමින්…",
+  pendingLabel = "Working…",
 }: {
   children: React.ReactNode;
   message?: string;
@@ -38,7 +38,7 @@ export default function ConfirmSubmit({
 export function SubmitButton({
   children,
   className,
-  pendingLabel = "සුරකිමින්…",
+  pendingLabel = "Saving…",
 }: {
   children: React.ReactNode;
   className?: string;

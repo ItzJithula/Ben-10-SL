@@ -15,7 +15,7 @@ export default function LogoUploadForm({ currentUrl }: { currentUrl: string }) {
       <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-omni-400/40 bg-void-950">
         {preview || currentUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview ?? currentUrl} alt="ලාංඡනය" className="h-full w-full object-cover" />
+          <img src={preview ?? currentUrl} alt="Site logo" className="h-full w-full object-cover" />
         ) : (
           <span className="text-omni-300">?</span>
         )}
@@ -23,7 +23,7 @@ export default function LogoUploadForm({ currentUrl }: { currentUrl: string }) {
 
       <label className="flex-1 min-w-[240px] cursor-pointer">
         <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-          රූප ගොනුව තෝරන්න
+          Choose an image file
         </span>
         <input
           ref={inputRef}
@@ -41,9 +41,9 @@ export default function LogoUploadForm({ currentUrl }: { currentUrl: string }) {
 
       <SubmitButton
         className="rounded-full bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni"
-        pendingLabel="උඩුගත වෙමින්…"
+        pendingLabel="Uploading…"
       >
-        ලාංඡනය උඩුගත කරන්න
+        Upload logo
       </SubmitButton>
     </form>
   );

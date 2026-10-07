@@ -8,8 +8,8 @@ import SectionHeading from "@/components/SectionHeading";
 import { listCategories, listReleases } from "@/lib/queries";
 
 export const metadata: Metadata = {
-  title: "සියලු නිකුතු",
-  description: "Ben 10 සියලුම සිංහල හඬකැවූ කථාංග හා චිත්‍රපට එකම තැනක.",
+  title: "All Releases",
+  description: "Every Ben 10 episode and movie with Sinhala audio, all in one place.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -21,7 +21,7 @@ function first(value: string | string[] | undefined): string | undefined {
 
 export default async function ReleasesPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const categories = listCategories();
+  const categories = await listCategories();
 
   const page = Number.parseInt(first(params.page) ?? "1", 10) || 1;
   const filters = {
@@ -33,7 +33,7 @@ export default async function ReleasesPage({ searchParams }: { searchParams: Sea
     perPage: 12,
   };
 
-  const result = listReleases(filters);
+  const result = await listReleases(filters);
 
   const makeHref = (targetPage: number) => {
     const next = new URLSearchParams();
@@ -49,9 +49,9 @@ export default async function ReleasesPage({ searchParams }: { searchParams: Sea
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <Reveal>
         <SectionHeading
-          kicker="නිකුතු පුස්තකාලය"
-          title="සියලු සිංහල නිකුතු"
-          subtitle={`මුළු නිකුතු ${result.total}ක් — මාලාව, වර්ගය හෝ නම අනුව පෙරහන් කරන්න.`}
+          kicker="Release library"
+          title="All Sinhala releases"
+          subtitle={`${result.total} releases — filter by series, type or title.`}
         />
       </Reveal>
 
@@ -69,9 +69,9 @@ export default async function ReleasesPage({ searchParams }: { searchParams: Sea
 
       {result.items.length === 0 ? (
         <div className="panel mt-10 p-12 text-center">
-          <p className="font-display text-lg font-black text-white">ගැළපෙන නිකුතුවක් හමු නොවිණි</p>
+          <p className="font-display text-lg font-black text-white">No matching releases</p>
           <p className="mt-2 text-sm text-void-100">
-            වෙනත් මාලාවක් හෝ වෙනත් සෙවුම් පදයක් උත්සාහ කරන්න.
+            Try another collection or a different search term.
           </p>
         </div>
       ) : null}

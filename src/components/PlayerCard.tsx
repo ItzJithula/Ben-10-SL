@@ -35,7 +35,7 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
             <iframe
               className="h-full w-full"
               src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&color=white&autoplay=0`}
-              title={`${release.title} — සිංහල හඬකැවීම`}
+              title={`${release.title} — Sinhala dub`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
@@ -59,7 +59,7 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
                   </svg>
                 </span>
                 <p className="max-w-sm text-sm leading-relaxed text-void-100">
-                  වීඩියෝව ධාරාව සඳහා පහත සබැඳිය භාවිතා කරන්න. සියලුම ගොනු ටෙලිග්‍රෑම් හරහා සිංහල හඬකැවීමෙන් ලබා ගත හැක.
+                  Use the links below to stream or download. Every file is delivered through Telegram with Sinhala audio.
                 </p>
                 <a
                   href={release.telegram_url || "#"}
@@ -67,7 +67,7 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
                   rel="noreferrer noopener"
                   className="rounded-full bg-linear-to-r from-omni-300 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-wider text-void-950 uppercase"
                 >
-                  ටෙලිග්‍රෑම් හරහා නරඹන්න
+                  Watch on Telegram
                 </a>
               </div>
             </>
@@ -77,13 +77,13 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
         <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
           <div className="flex flex-wrap items-center gap-2 text-[0.65rem] font-black tracking-wider uppercase">
             <span className="rounded-full bg-omni-400/90 px-3 py-1 text-void-950">
-              සිංහල හඬකැවීම
+              Sinhala Dub
             </span>
             <span className="rounded-full border border-omni-400/35 px-3 py-1 text-omni-300">
               {release.quality}
             </span>
             <span className="rounded-full border border-void-500 px-3 py-1 text-void-100">
-              {release.quality === "480p" ? "SD" : "HD"} · {release.duration_minutes} මිනිත්තු
+              {release.quality === "480p" ? "SD" : "HD"} · {release.duration_minutes} min
             </span>
           </div>
 
@@ -92,7 +92,7 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
             onClick={copyLink}
             className="flex items-center gap-2 rounded-full border border-void-500 px-4 py-2 text-xs font-bold text-void-100 transition-colors hover:border-omni-400/60 hover:text-omni-300"
           >
-            {copied ? "පිටපත් විය ✓" : "සබැඳිය පිටපත් කරන්න"}
+            {copied ? "Copied ✓" : "Copy link"}
           </button>
         </div>
       </div>
@@ -101,16 +101,16 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
       <div className="panel p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-display text-sm font-black tracking-[0.22em] text-omni-300 uppercase">
-            බාගැනීමේ සබැඳි
+            Download links
           </h2>
           {total > 0 ? (
-            <span className="text-xs font-bold text-void-200">එකතුව ≈ {formatSize(total)}</span>
+            <span className="text-xs font-bold text-void-200">Total ≈ {formatSize(total)}</span>
           ) : null}
         </div>
 
         {release.qualities.length === 0 ? (
           <p className="text-sm text-void-100">
-            මෙම නිකුතුව සඳහා සබැඳි තවම එක් කර නැත. ටෙලිග්‍රෑම් නාලිකාවෙන් ඉල්ලන්න.
+            No links have been added for this release yet. Ask on our Telegram channel.
           </p>
         ) : (
           <ul className="space-y-3">
@@ -128,10 +128,10 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
                     </span>
                     <span>
                       <span className="block text-sm font-bold text-white">
-                        {quality.label} — බාගන්න
+                        {quality.label} — Download
                       </span>
                       <span className="block text-[0.7rem] text-void-200">
-                        {formatSize(quality.file_size_mb)} · සිංහල හඬකැවීම
+                        {formatSize(quality.file_size_mb)} · Sinhala audio
                       </span>
                     </span>
                   </span>
@@ -161,7 +161,7 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                 <path d="M21.9 4.3 19 19.1c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.5 8.3-7.5c.4-.3-.1-.5-.6-.2L7.5 12.4l-4.4-1.4c-1-.3-1-1 .2-1.4l17-6.6c.8-.3 1.5.2 1.6 1.3Z" />
               </svg>
-              ටෙලිග්‍රෑම්
+              Telegram
             </a>
           ) : null}
 
@@ -173,7 +173,7 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
                 exit={{ opacity: 0 }}
                 className="flex items-center text-xs font-bold text-omni-300"
               >
-                සබැඳිය පිටපත් කරන ලදි
+                Link copied
               </motion.span>
             )}
           </AnimatePresence>

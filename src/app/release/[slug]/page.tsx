@@ -9,16 +9,16 @@ import SectionHeading from "@/components/SectionHeading";
 import ViewPing from "@/components/ViewPing";
 import { WatchFrame } from "@/components/OmnitrixWatch";
 import { getNeighbours, getRelatedReleases, getReleaseBySlug } from "@/lib/queries";
-import { episodeLabel, formatDateSi, formatViews, parseTags, truncate } from "@/lib/utils";
+import { episodeLabel, formatDateLong, formatViews, parseTags, truncate } from "@/lib/utils";
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const release = getReleaseBySlug(slug);
-  if (!release) return { title: "නිකුතුව හමු නොවිණි" };
+  const release = await getReleaseBySlug(slug);
+  if (!release) return { title: "Release not found" };
   return {
-    title: `${release.title} — සිංහල හඬකැවීම`,
+    title: `${release.title} — Sinhala Dub`,
     description: truncate(release.synopsis || release.title, 150),
     openGraph: {
       title: release.title,
@@ -30,22 +30,24 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function ReleasePage({ params }: { params: Params }) {
   const { slug } = await params;
-  const release = getReleaseBySlug(slug);
+  const release = await getReleaseBySlug(slug);
   if (!release) notFound();
 
-  const { prev, next } = getNeighbours(release);
-  const related = getRelatedReleases(release, 4);
+  const [{ prev, next }, related] = await Promise.all([
+    getNeighbours(release),
+    getRelatedReleases(release, 4),
+  ]);
   const tags = parseTags(release.tags);
 
   const details = [
-    { label: "නිකුත් කේතය", value: release.code || "—" },
-    { label: "මාලාව", value: release.category_name_si || release.category_name },
-    { label: "වර්ගය", value: episodeLabel(release) },
-    { label: "හඬකැවීම", value: release.dubbed_studio || "—" },
-    { label: "හඬකැවූ දිනය", value: formatDateSi(release.dubbed_date) },
-    { label: "මුල් විකාශය", value: formatDateSi(release.aired_date) },
-    { label: "කාලය", value: `${release.duration_minutes} මිනිත්තු` },
-    { label: "නැරඹුම්", value: formatViews(release.views) },
+    { label: "Release code", value: release.code || "—" },
+    { label: "Collection", value: release.category_name },
+    { label: "Type", value: episodeLabel(release) },
+    { label: "Dub studio", value: release.dubbed_studio || "—" },
+    { label: "Dubbed on", value: formatDateLong(release.dubbed_date) },
+    { label: "Original air date", value: formatDateLong(release.aired_date) },
+    { label: "Runtime", value: `${release.duration_minutes} min` },
+    { label: "Views", value: formatViews(release.views) },
   ];
 
   return (
@@ -55,11 +57,11 @@ export default async function ReleasePage({ params }: { params: Params }) {
       {/* breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-2 text-[0.7rem] font-bold tracking-wider text-void-200 uppercase">
         <Link href="/" className="hover:text-omni-300">
-          මුල් පිටුව
+          Home
         </Link>
         <span className="text-void-400">/</span>
         <Link href="/releases" className="hover:text-omni-300">
-          නිකුතු
+          Releases
         </Link>
         <span className="text-void-400">/</span>
         <Link href={`/category/${release.category_slug}`} className="hover:text-omni-300">
@@ -81,14 +83,14 @@ export default async function ReleasePage({ params }: { params: Params }) {
                   border: `1px solid ${release.category_accent}55`,
                 }}
               >
-                {release.category_name_si || release.category_name}
+                {release.category_name}
               </span>
               <h1 className="font-display text-2xl leading-tight font-black text-white sm:text-4xl">
                 {release.title}
               </h1>
-              {release.title_en ? (
+              {release.subtitle ? (
                 <p className="mt-2 text-sm font-bold tracking-[0.18em] text-void-200 uppercase">
-                  {release.title_en}
+                  {release.subtitle}
                 </p>
               ) : null}
             </div>
@@ -101,10 +103,10 @@ export default async function ReleasePage({ params }: { params: Params }) {
           <Reveal delay={0.1}>
             <div className="panel p-6">
               <h2 className="mb-3 font-display text-sm font-black tracking-[0.22em] text-omni-300 uppercase">
-                කථා සාරාංශය
+                Synopsis
               </h2>
               <p className="text-sm leading-relaxed whitespace-pre-line text-void-100">
-                {release.synopsis || "සාරාංශයක් තවම එක් කර නැත."}
+                {release.synopsis || "No synopsis has been added yet."}
               </p>
 
               {tags.length > 0 ? (
@@ -130,7 +132,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
                 <span className="text-omni-300">←</span>
                 <span>
                   <span className="block text-[0.62rem] font-black tracking-[0.24em] text-void-200 uppercase">
-                    පෙර කථාංගය
+                    Previous episode
                   </span>
                   <span className="line-clamp-1 font-display text-sm font-bold text-white">
                     {prev.title}
@@ -139,7 +141,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
               </Link>
             ) : (
               <span className="panel flex items-center p-4 text-xs text-void-300">
-                මෙය මාලාවේ පළමු නිකුතුවයි
+                This is the first release in the collection
               </span>
             )}
 
@@ -150,7 +152,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
               >
                 <span>
                   <span className="block text-[0.62rem] font-black tracking-[0.24em] text-void-200 uppercase">
-                    ඊළඟ කථාංගය
+                    Next episode
                   </span>
                   <span className="line-clamp-1 font-display text-sm font-bold text-white">
                     {next.title}
@@ -160,7 +162,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
               </Link>
             ) : (
               <span className="panel flex items-center justify-end p-4 text-xs text-void-300">
-                මෙය මාලාවේ අවසන් නිකුතුවයි
+                This is the last release in the collection
               </span>
             )}
           </div>
@@ -172,7 +174,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
             <WatchFrame>
               <div className="p-5">
                 <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-black tracking-[0.22em] text-omni-300 uppercase">
-                  නිකුතු තොරතුරු
+                  Release details
                 </h2>
                 <dl className="space-y-3 text-sm">
                   {details.map((item) => (
@@ -190,7 +192,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
 
                 {release.source ? (
                   <p className="mt-4 rounded-xl border border-void-600 bg-void-950/60 p-3 text-[0.72rem] leading-relaxed text-void-200">
-                    මූලාශ්‍රය: {release.source}
+                    Source: {release.source}
                   </p>
                 ) : null}
               </div>
@@ -201,7 +203,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
             <Reveal direction="left" delay={0.08}>
               <div className="panel p-5">
                 <h2 className="mb-4 font-display text-sm font-black tracking-[0.22em] text-omni-300 uppercase">
-                  මාලාවේ තවත් නිකුතු
+                  More from this collection
                 </h2>
                 <div className="space-y-3">
                   {related.map((item) => (
@@ -241,7 +243,7 @@ export default async function ReleasePage({ params }: { params: Params }) {
       {related.length > 0 ? (
         <section className="mt-16">
           <Reveal>
-            <SectionHeading kicker="ඔබට කැමති විය හැක" title="තවත් නිකුතු" />
+            <SectionHeading kicker="You may also like" title="More releases" />
           </Reveal>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((item) => (

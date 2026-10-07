@@ -3,20 +3,22 @@ import type { Metadata } from "next";
 import AlienStrip from "@/components/AlienStrip";
 import Reveal from "@/components/Reveal";
 import SectionHeading from "@/components/SectionHeading";
-import { WatchFrame } from "@/components/OmnitrixWatch";
-import OmnitrixWatch from "@/components/OmnitrixWatch";
+import OmnitrixWatch, { WatchFrame } from "@/components/OmnitrixWatch";
 import { getSiteStats, listCategories } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
-  title: "අප ගැන",
-  description: "Ben 10 SL — සිංහල හඬකැවූ Ben 10 නිකුතු පිළිබඳ රසික පිටුවක්.",
+  title: "About",
+  description:
+    "Ben 10 SL is a fan-run archive of Ben 10 episodes and movies with Sinhala audio, organised by series.",
 };
 
-export default function AboutPage() {
-  const settings = getSettings();
-  const categories = listCategories();
-  const stats = getSiteStats();
+export default async function AboutPage() {
+  const [settings, categories, stats] = await Promise.all([
+    getSettings(),
+    listCategories(),
+    getSiteStats(),
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -24,33 +26,32 @@ export default function AboutPage() {
         <Reveal>
           <div>
             <p className="mb-3 text-[0.66rem] font-black tracking-[0.34em] text-omni-400 uppercase">
-              අපගේ කථාව
+              Our story
             </p>
             <h1 className="font-display text-3xl font-black text-white sm:text-4xl">
-              සිංහල බෙන් 10 රසිකයන් සඳහාම
+              Built for Sinhala Ben 10 fans
             </h1>
             <div className="mt-6 space-y-4 text-sm leading-relaxed text-void-100 sm:text-base">
+              <p>{settings.site_description}</p>
               <p>
-                {settings.site_description}
+                Our goal is simple: make every Ben 10 episode easy to find with{" "}
+                <strong className="text-omni-300">Sinhala audio</strong>, in one place and free to
+                watch. That is why the library only ever holds Sinhala dubbed releases — nothing else.
               </p>
               <p>
-                අපගේ අරමුණ එකයි — ලංකාවේ Ben 10 රසිකයන්ට සියලුම කථාංග <strong className="text-omni-300">සිංහල
-                හඬකැවීමෙන්</strong> එකම තැනකින්, පහසුවෙන් සහ නොමිලේ සොයා ගැනීමට ඉඩ සැලසීමයි. එම නිසා අපගේ
-                පුස්තකාලයේ ඇත්තේ සිංහල හඬකැවූ නිකුතු පමණි.
-              </p>
-              <p>
-                සෑම නිකුතුවක්ම ප්‍රධාන එකතුවලට වර්ග කර ඇත — ක්ලැසික්, එලියන් ෆෝස්, අල්ටිමේට් එලියන්, ඕම්නිවර්ස්,
-                රීබූට් සහ චිත්‍රපට/විශේෂ. කථාංග අනුපිළිවෙල, ගුණත්ව මට්ටම් (480p/720p/1080p), හඬකැවීමේ ස්ටුඩියෝව
-                සහ දිනයන් ඇතුළු සියලු තොරතුරු එක් එක් නිකුතු පිටුවේ ඇත.
+                Every release is filed under its main collection — Classic, Alien Force, Ultimate
+                Alien, Omniverse, Reboot and Movies &amp; Specials. Episode order, available
+                qualities (480p / 720p / 1080p), dub studio and dates are all listed on the release
+                page, so you always know exactly what you are downloading.
               </p>
             </div>
 
             <dl className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4">
               {[
-                { label: "නිකුතු", value: stats.releases },
-                { label: "කථාංග", value: stats.episodes },
-                { label: "චිත්‍රපට", value: stats.movies },
-                { label: "මාලාවන්", value: categories.length },
+                { label: "Releases", value: stats.releases },
+                { label: "Episodes", value: stats.episodes },
+                { label: "Movies", value: stats.movies },
+                { label: "Collections", value: categories.length },
               ].map((item) => (
                 <div key={item.label} className="panel p-4">
                   <dt className="text-[0.62rem] font-black tracking-[0.24em] text-void-200 uppercase">
@@ -74,26 +75,26 @@ export default function AboutPage() {
         <Reveal>
           <SectionHeading
             align="center"
-            kicker="අපගේ මූලධර්ම"
-            title="අප විශ්වාස කරන දේ"
+            kicker="What we stand for"
+            title="How this page works"
           />
         </Reveal>
 
         <div className="grid gap-5 md:grid-cols-3">
           {[
             {
-              title: "සිංහල හඬකැවීම පමණයි",
-              text: "අපගේ සියලුම නිකුතු සිංහල හඬකැවීමෙන් යුක්තය. සිංහල උපසිරැසි සහිත මුල් හඬ පිටපත් ඇත්නම් ඒවා වෙනම සටහන් කර ඇත.",
+              title: "Sinhala dub, always",
+              text: "Every release in the library carries Sinhala audio. Nothing else is published here, and the admin panel only allows Sinhala releases.",
               color: "#39FF14",
             },
             {
-              title: "නොමිලේ හා විවෘත",
-              text: "නරඹීමට හෝ බාගැනීමට කිසිදු ගෙවීමක් නොමැත. සබැඳි ටෙලිග්‍රෑම් හරහා සෘජුවම ලබා දේ.",
+              title: "Free and open",
+              text: "No payments, no accounts, no waiting. Links go straight to Telegram so you can stream or download immediately.",
               color: "#00E5FF",
             },
             {
-              title: "රසිකයන් විසින්ම",
-              text: "මෙය රසිකයන් විසින් නිර්මිත පිටුවකි. සියලුම අයිතිවාසිකම් මුල් හිමිකරුවන් සතුය.",
+              title: "Run by fans",
+              text: "This is an unofficial fan project. All characters, artwork and series titles belong to their original rights holders.",
               color: "#FF2E88",
             },
           ].map((item, index) => (
@@ -102,7 +103,11 @@ export default function AboutPage() {
                 <div className="h-full p-6">
                   <span
                     className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border font-display text-sm font-black"
-                    style={{ borderColor: `${item.color}66`, color: item.color, background: `${item.color}12` }}
+                    style={{
+                      borderColor: `${item.color}66`,
+                      color: item.color,
+                      background: `${item.color}12`,
+                    }}
                   >
                     {index + 1}
                   </span>
@@ -117,7 +122,7 @@ export default function AboutPage() {
 
       <section className="mt-20">
         <Reveal>
-          <SectionHeading align="center" kicker="ඔම්නිට්‍රික්ස්" title="එලියන් බලකාය" />
+          <SectionHeading align="center" kicker="Omnitrix" title="The alien roster" />
         </Reveal>
         <AlienStrip />
       </section>
@@ -125,12 +130,12 @@ export default function AboutPage() {
       <section className="mt-20">
         <Reveal>
           <div className="panel p-7">
-            <h2 className="font-display text-lg font-black text-white">වගකීම් ප්‍රතික්ෂේප කිරීම</h2>
+            <h2 className="font-display text-lg font-black text-white">Disclaimer</h2>
             <p className="mt-3 text-sm leading-relaxed text-void-100">{settings.disclaimer}</p>
             <p className="mt-4 text-sm leading-relaxed text-void-100">
-              අපගේ වෙබ් අඩවියේ කිසිදු වීඩියෝ ගොනුවක් දේශීයව ගබඩා නොකෙරේ. සියලුම සබැඳි පිටත සේවාදායකයන් වෙත
-              යොමු කෙරේ. කිසියම් අයිතිවාසිකම් උල්ලංඝනයක් සිදුව ඇතැයි සිතේ නම්, අප හා සම්බන්ධ වන්න — අදාළ සබැඳි
-              වහාම ඉවත් කරනු ලැබේ.
+              No video file is hosted on this website — every link points to an external service. If
+              you believe something here infringes your rights, contact us and the relevant links
+              will be removed straight away.
             </p>
           </div>
         </Reveal>

@@ -4,9 +4,6 @@
 @import "@fontsource/rajdhani/500.css";
 @import "@fontsource/rajdhani/600.css";
 @import "@fontsource/rajdhani/700.css";
-@import "@fontsource/noto-sans-sinhala/400.css";
-@import "@fontsource/noto-sans-sinhala/500.css";
-@import "@fontsource/noto-sans-sinhala/700.css";
 
 /* ------------------------------------------------------------------ */
 /* Ben 10 theme tokens                                                 */
@@ -45,8 +42,8 @@
   --color-alien-magenta: #ff2e88;
   --color-alien-red: #ff3b3b;
 
-  --font-display: "Orbitron Variable", "Noto Sans Sinhala", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Rajdhani", "Noto Sans Sinhala", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
 
   --radius-card: 1.15rem;
 

@@ -10,10 +10,10 @@ import type { CategoryWithCount, QualityInput, ReleaseDetail } from "@/lib/types
 const INITIAL: ActionState = { ok: false, message: "" };
 
 const TYPES = [
-  { value: "episode", label: "කථාංගය" },
-  { value: "movie", label: "චිත්‍රපටය" },
-  { value: "special", label: "විශේෂ වැඩසටහන" },
-  { value: "short", label: "කෙටි වැඩසටහන" },
+  { value: "episode", label: "Episode" },
+  { value: "movie", label: "Movie" },
+  { value: "special", label: "Special" },
+  { value: "short", label: "Short" },
 ];
 
 const QUALITY_PRESETS = ["480p", "720p", "1080p", "1440p", "2160p", "HD", "FHD"];
@@ -58,7 +58,8 @@ export default function ReleaseForm({
   const [state, formAction, pending] = useActionState(saveReleaseAction, INITIAL);
 
   const [slug, setSlug] = useState(release?.slug ?? "");
-  const [titleEn, setTitleEn] = useState(release?.title_en ?? "");
+  const [slugTouched, setSlugTouched] = useState(Boolean(release?.slug));
+  const [title, setTitle] = useState(release?.title ?? "");
   const [qualities, setQualities] = useState<QualityInput[]>(
     release?.qualities.map((quality) => ({
       label: quality.label,
@@ -89,11 +90,11 @@ export default function ReleaseForm({
       {/* ---------------------------------------------------- basics */}
       <section className="panel p-6">
         <h2 className="mb-5 font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-          1 · මූලික තොරතුරු
+          1 · Basics
         </h2>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="මාලාව / ප්‍රවර්ගය" error={state.fieldErrors?.category_id}>
+          <Field label="Collection" error={state.fieldErrors?.category_id}>
             <select
               name="category_id"
               defaultValue={release?.category_id ?? categories[0]?.id ?? 0}
@@ -102,49 +103,52 @@ export default function ReleaseForm({
             >
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name_si || category.name} ({category.name})
+                  {category.name}
                 </option>
               ))}
             </select>
           </Field>
 
-          <Field label="නිකුත් කේතය" hint="උදා: B10-CL-007">
+          <Field label="Release code" hint="e.g. B10-CL-007">
             <input name="code" defaultValue={release?.code ?? ""} className={inputClass} placeholder="B10-CL-007" />
           </Field>
 
-          <Field label="සිංහල නම" error={state.fieldErrors?.title}>
+          <Field label="Title" error={state.fieldErrors?.title}>
             <input
               name="title"
-              defaultValue={release?.title ?? ""}
+              value={title}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                if (!slugTouched) setSlug(slugify(event.target.value));
+              }}
               className={inputClass}
-              placeholder="කථාංගයේ සිංහල නම"
+              placeholder="And Then There Were 10"
               required
             />
           </Field>
 
-          <Field label="මුල් නම (ඉංග්‍රීසි)" hint="slug ස්වයංක්‍රීයව සෑදේ">
+          <Field label="Alternative title" hint="optional · shown as a subtitle">
             <input
-              name="title_en"
-              value={titleEn}
-              onChange={(event) => {
-                setTitleEn(event.target.value);
-                setSlug(slugify(event.target.value));
-              }}
+              name="subtitle"
+              defaultValue={release?.subtitle ?? ""}
               className={inputClass}
-              placeholder="And Then There Were 10"
+              placeholder="Ben 10 Classic · Season 1"
             />
           </Field>
 
-          <Field label="URL slug" hint="වෙබ් ලිපිනයේ පෙනෙන කොටස">
+          <Field label="URL slug" hint="the part shown in the web address">
             <input
               value={slug}
-              onChange={(event) => setSlug(slugify(event.target.value))}
+              onChange={(event) => {
+                setSlugTouched(true);
+                setSlug(slugify(event.target.value));
+              }}
               className={inputClass}
               placeholder="and-then-there-were-10"
             />
           </Field>
 
-          <Field label="වර්ගය">
+          <Field label="Episode type">
             <select name="episode_type" defaultValue={release?.episode_type ?? "episode"} className={inputClass}>
               {TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -155,7 +159,7 @@ export default function ReleaseForm({
           </Field>
 
           <div className="grid grid-cols-2 gap-5">
-            <Field label="වාරය">
+            <Field label="Season">
               <input
                 name="season"
                 type="number"
@@ -164,7 +168,7 @@ export default function ReleaseForm({
                 className={inputClass}
               />
             </Field>
-            <Field label="කථාංග අංකය">
+            <Field label="Episode number">
               <input
                 name="episode_number"
                 type="number"
@@ -177,7 +181,7 @@ export default function ReleaseForm({
           </div>
 
           <div className="grid grid-cols-2 gap-5">
-            <Field label="ගුණත්වය">
+            <Field label="Quality">
               <input
                 name="quality"
                 list="quality-presets"
@@ -190,7 +194,7 @@ export default function ReleaseForm({
                 ))}
               </datalist>
             </Field>
-            <Field label="කාලය (මිනිත්තු)">
+            <Field label="Runtime (minutes)">
               <input
                 name="duration_minutes"
                 type="number"
@@ -201,10 +205,10 @@ export default function ReleaseForm({
             </Field>
           </div>
 
-          <Field label="තත්ත්වය">
+          <Field label="Status">
             <select name="status" defaultValue={release?.status ?? "published"} className={inputClass}>
-              <option value="published">ප්‍රකාශිත</option>
-              <option value="draft">කෙටුම්පත</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
             </select>
           </Field>
 
@@ -215,7 +219,7 @@ export default function ReleaseForm({
               defaultChecked={release?.featured === 1}
               className="h-4 w-4 accent-[#39ff14]"
             />
-            <span className="text-sm font-bold text-void-50">මුල් පිටුවේ විශේෂ නිකුතුව ලෙස පෙන්වන්න</span>
+            <span className="text-sm font-bold text-void-50">Feature this release on the home page</span>
           </label>
         </div>
       </section>
@@ -223,21 +227,21 @@ export default function ReleaseForm({
       {/* ---------------------------------------------------- content */}
       <section className="panel p-6">
         <h2 className="mb-5 font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-          2 · විස්තර හා මාධ්‍ය
+          2 · Details & media
         </h2>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="කථා සාරාංශය (සිංහල)" className="sm:col-span-2">
+          <Field label="Synopsis" className="sm:col-span-2">
             <textarea
               name="synopsis"
               defaultValue={release?.synopsis ?? ""}
               rows={5}
               className={cx(inputClass, "resize-y leading-relaxed")}
-              placeholder="කථාංගයේ කෙටි විස්තරය…"
+              placeholder="What happens in this episode?"
             />
           </Field>
 
-          <Field label="පින්තූර සබැඳිය (thumbnail)" hint="https://… හෝ /art/…">
+          <Field label="Thumbnail URL" hint="https://… or /art/…">
             <input
               name="thumbnail"
               defaultValue={release?.thumbnail ?? ""}
@@ -246,25 +250,25 @@ export default function ReleaseForm({
             />
           </Field>
 
-          <Field label="ටැග්" hint="කොමාවෙන් වෙන් කරන්න">
+          <Field label="Tags" hint="comma separated">
             <input
               name="tags"
               defaultValue={release?.tags ?? ""}
               className={inputClass}
-              placeholder="සටන්,එලියන්,විශේෂ"
+              placeholder="fight,aliens,special"
             />
           </Field>
 
-          <Field label="මූලාශ්‍රය">
+          <Field label="Source">
             <input
               name="source"
               defaultValue={release?.source ?? ""}
               className={inputClass}
-              placeholder="Cartoon Network (සිංහල හඬකැවීම)"
+              placeholder="Cartoon Network (Sinhala dub)"
             />
           </Field>
 
-          <Field label="ටෙලිග්‍රෑම් සබැඳිය">
+          <Field label="Telegram link">
             <input
               name="telegram_url"
               defaultValue={release?.telegram_url ?? ""}
@@ -278,18 +282,18 @@ export default function ReleaseForm({
       {/* ---------------------------------------------------- dub info */}
       <section className="panel p-6">
         <h2 className="mb-5 font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-          3 · හඬකැවීමේ තොරතුරු
+          3 · Dub information
         </h2>
 
         <div className="grid gap-5 sm:grid-cols-3">
-          <Field label="හඬකැවීමේ ස්ටුඩියෝව">
+          <Field label="Dub studio">
             <input
               name="dubbed_studio"
               defaultValue={release?.dubbed_studio ?? "SL Dubbing Team"}
               className={inputClass}
             />
           </Field>
-          <Field label="හඬකැවූ දිනය">
+          <Field label="Dubbed on">
             <input
               name="dubbed_date"
               type="date"
@@ -297,7 +301,7 @@ export default function ReleaseForm({
               className={inputClass}
             />
           </Field>
-          <Field label="මුල් විකාශන දිනය">
+          <Field label="Original air date">
             <input
               name="aired_date"
               type="date"
@@ -311,8 +315,8 @@ export default function ReleaseForm({
               ✓
             </span>
             <p className="text-xs leading-relaxed text-void-100">
-              මෙම වෙබ් අඩවියේ සියලුම නිකුතු <strong className="text-omni-300">සිංහල හඬකැවීම</strong> ලෙසම
-              සුරැකේ — වෙනත් භාෂාවක් තෝරාගත නොහැක.
+              Every release on this site is stored as a <strong className="text-omni-300">Sinhala dub</strong> —
+              no other audio language can be selected.
             </p>
           </div>
         </div>
@@ -322,7 +326,7 @@ export default function ReleaseForm({
       <section className="panel p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-            4 · බාගැනීමේ සබැඳි
+            4 · Download links
           </h2>
           <button
             type="button"
@@ -331,7 +335,7 @@ export default function ReleaseForm({
             }
             className="rounded-full border border-omni-400/40 px-4 py-2 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/10"
           >
-            + සබැඳියක්
+            + Add link
           </button>
         </div>
 
@@ -350,7 +354,7 @@ export default function ReleaseForm({
               <input
                 value={quality.url}
                 onChange={(event) => update(index, { url: event.target.value })}
-                placeholder="https://t.me/… හෝ YouTube සබැඳිය"
+                placeholder="https://t.me/… or a YouTube link"
                 className={inputClass}
               />
               <input
@@ -370,20 +374,20 @@ export default function ReleaseForm({
                 onClick={() => setQualities((rows) => rows.filter((_, i) => i !== index))}
                 className="rounded-xl border border-alien-red/35 px-3 text-xs font-bold text-alien-red transition-colors hover:bg-alien-red/10"
               >
-                ඉවත් කරන්න
+                Remove
               </button>
             </div>
           ))}
 
           {qualities.length === 0 ? (
             <p className="rounded-xl border border-dashed border-void-500 px-4 py-6 text-center text-xs text-void-200">
-              සබැඳි නොමැත. “+ සබැඳියක්” ඔබා එක් කරන්න.
+              No links yet. Use “+ Add link” to add one.
             </p>
           ) : null}
         </div>
 
         <p className="mt-4 text-[0.68rem] leading-relaxed text-void-300">
-          ඉඟිය: YouTube සබැඳියක් එක් කළහොත්, නිකුතු පිටුවේ එය ස්වයංක්‍රීයව ගොනු නොකළ වීඩියෝ ධාවකයක් ලෙස පෙන්වයි.
+          Tip: add a YouTube link and the release page will embed it automatically as a player.
         </p>
       </section>
 
@@ -394,13 +398,13 @@ export default function ReleaseForm({
           disabled={pending}
           className="rounded-full bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-7 py-3.5 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni transition-transform hover:scale-[1.02] disabled:opacity-70"
         >
-          {pending ? "සුරකිමින්…" : release ? "වෙනස්කම් සුරකින්න" : "නිකුතුව ප්‍රකාශ කරන්න"}
+          {pending ? "Saving…" : release ? "Save changes" : "Publish release"}
         </button>
         <Link
           href="/admin/releases"
           className="rounded-full border border-void-500 px-6 py-3.5 font-display text-xs font-black tracking-[0.2em] text-void-100 uppercase transition-colors hover:border-omni-400/50 hover:text-omni-300"
         >
-          අවලංගු කරන්න
+          Cancel
         </Link>
       </div>
     </form>

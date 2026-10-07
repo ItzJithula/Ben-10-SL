@@ -6,17 +6,17 @@ import type { CategoryWithCount } from "@/lib/types";
 import { cx } from "@/lib/utils";
 
 const TYPES = [
-  { value: "all", label: "සියල්ල" },
-  { value: "episode", label: "කථාංග" },
-  { value: "movie", label: "චිත්‍රපට" },
-  { value: "special", label: "විශේෂ" },
+  { value: "all", label: "All" },
+  { value: "episode", label: "Episodes" },
+  { value: "movie", label: "Movies" },
+  { value: "special", label: "Specials" },
 ];
 
 const SORTS = [
-  { value: "newest", label: "අලුත්ම" },
-  { value: "views", label: "ජනප්‍රිය" },
-  { value: "episode", label: "කථාංග අනුපිළිවෙල" },
-  { value: "title", label: "නම අනුව" },
+  { value: "newest", label: "Newest" },
+  { value: "views", label: "Most viewed" },
+  { value: "episode", label: "Episode order" },
+  { value: "title", label: "Title A–Z" },
 ];
 
 export default function FilterBar({
@@ -72,7 +72,7 @@ export default function FilterBar({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="කථාංගයේ නම, කේතය හෝ ටැගය සොයන්න…"
+            placeholder="Search by episode title, code or tag…"
             className="w-full rounded-full border border-void-500 bg-void-900/80 py-3 pr-4 pl-11 text-sm text-white outline-none transition-colors placeholder:text-void-300 focus:border-omni-400/70"
           />
         </div>
@@ -80,7 +80,7 @@ export default function FilterBar({
           type="submit"
           className="rounded-full bg-linear-to-r from-omni-400 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-wider text-void-950 uppercase transition-transform hover:scale-[1.02]"
         >
-          සොයන්න
+          Search
         </button>
       </form>
 
@@ -96,7 +96,7 @@ export default function FilterBar({
               : "border-void-500 text-void-100 hover:border-omni-400/60 hover:text-omni-300",
           )}
         >
-          සියලු මාලාවන්
+          All collections
         </button>
         {categories.map((item) => (
           <button
@@ -115,7 +115,7 @@ export default function FilterBar({
                 : { borderColor: `${item.accent}44` }
             }
           >
-            {item.name_si || item.name}
+            {item.name}
             <span className="ml-2 opacity-70">{item.release_count}</span>
           </button>
         ))}
@@ -143,7 +143,7 @@ export default function FilterBar({
 
         <div className="ml-auto flex items-center gap-2">
           <label htmlFor="sort" className="text-[0.68rem] font-bold tracking-wider text-void-200 uppercase">
-            පෙළගැස්ම
+            Sort
           </label>
           <select
             id="sort"

@@ -13,7 +13,7 @@ import type { CategoryWithCount } from "@/lib/types";
 interface HeaderCategory {
   slug: string;
   name: string;
-  name_si: string;
+  name_alt: string;
   accent: string;
   release_count: number;
 }
@@ -52,17 +52,17 @@ export default function SiteHeader({
   const menu: HeaderCategory[] = categories.map((category) => ({
     slug: category.slug,
     name: category.name,
-    name_si: category.name_si,
+    name_alt: category.name_alt,
     accent: category.accent,
     release_count: category.release_count,
   }));
 
   const links = [
-    { href: "/", label: "මුල් පිටුව" },
-    { href: "/releases", label: "සියලු නිකුතු" },
-    { href: "/movies", label: "චිත්‍රපට" },
-    { href: "/about", label: "අප ගැන" },
-    { href: "/how-to-download", label: "උදව්" },
+    { href: "/", label: "Home" },
+    { href: "/releases", label: "All Releases" },
+    { href: "/movies", label: "Movies" },
+    { href: "/about", label: "About" },
+    { href: "/how-to-download", label: "Help" },
   ];
 
   const submitSearch = (event: React.FormEvent) => {
@@ -149,7 +149,7 @@ export default function SiteHeader({
                 )}
                 aria-expanded={collectionsOpen}
               >
-                මාලාවන්
+                Collections
                 <svg viewBox="0 0 12 8" className="h-2 w-3 fill-current">
                   <path d="M0 0 L6 8 L12 0 Z" />
                 </svg>
@@ -178,7 +178,7 @@ export default function SiteHeader({
                             />
                             <span>
                               <span className="block text-sm font-semibold text-white">
-                                {item.name_si || item.name}
+                                {item.name_alt || item.name}
                               </span>
                               <span className="block text-[0.7rem] tracking-wider text-void-200 uppercase">
                                 {item.name}
@@ -212,10 +212,10 @@ export default function SiteHeader({
                       autoFocus
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
-                      placeholder="සොයන්න…"
+                      placeholder="Search…"
                       className="w-full bg-transparent text-sm text-white outline-none placeholder:text-void-300"
                     />
-                    <button type="submit" className="text-omni-300" aria-label="සොයන්න">
+                    <button type="submit" className="text-omni-300" aria-label="Search">
                       <OmnitrixMark size={16} />
                     </button>
                   </motion.form>
@@ -225,7 +225,7 @@ export default function SiteHeader({
                     type="button"
                     onClick={() => setSearchOpen(true)}
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-omni-400/25 text-omni-200 transition-colors hover:border-omni-400/70 hover:text-omni-300"
-                    aria-label="සොයන්න"
+                    aria-label="Search"
                   >
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="11" cy="11" r="7" />
@@ -245,7 +245,7 @@ export default function SiteHeader({
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                 <path d="M21.9 4.3 19 19.1c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.5 8.3-7.5c.4-.3-.1-.5-.6-.2L7.5 12.4l-4.4-1.4c-1-.3-1-1 .2-1.4l17-6.6c.8-.3 1.5.2 1.6 1.3Z" />
               </svg>
-              ටෙලිග්‍රෑම්
+              Telegram
             </a>
 
             {/* mobile toggle */}
@@ -253,7 +253,7 @@ export default function SiteHeader({
               type="button"
               onClick={() => setOpen((value) => !value)}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-omni-400/30 text-omni-300 lg:hidden"
-              aria-label="මෙනුව"
+              aria-label="Menu"
               aria-expanded={open}
             >
               <span className="relative block h-4 w-6">
@@ -301,10 +301,10 @@ export default function SiteHeader({
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="කථාංග සොයන්න…"
+                    placeholder="Search episodes…"
                     className="w-full bg-transparent text-sm text-white outline-none placeholder:text-void-300"
                   />
-                  <button type="submit" className="text-omni-300" aria-label="සොයන්න">
+                  <button type="submit" className="text-omni-300" aria-label="Search">
                     <OmnitrixMark size={18} />
                   </button>
                 </form>
@@ -323,7 +323,7 @@ export default function SiteHeader({
 
                 <div>
                   <p className="px-4 pb-2 text-[0.68rem] font-bold tracking-[0.28em] text-void-300 uppercase">
-                    මාලාවන්
+                    Collections
                   </p>
                   <div className="grid gap-1">
                     {menu.map((item) => (
@@ -336,7 +336,7 @@ export default function SiteHeader({
                           className="h-2 w-2 rounded-full"
                           style={{ background: item.accent, boxShadow: `0 0 8px ${item.accent}` }}
                         />
-                        {item.name_si || item.name}
+                        {item.name_alt || item.name}
                         <span className="ml-auto text-xs text-omni-300">{item.release_count}</span>
                       </Link>
                     ))}
@@ -349,7 +349,7 @@ export default function SiteHeader({
                   rel="noreferrer noopener"
                   className="flex items-center justify-center gap-2 rounded-full bg-linear-to-r from-omni-400 to-omni-600 px-4 py-3 text-sm font-bold text-void-950"
                 >
-                  ටෙලිග්‍රෑම් නාලිකාවට එක්වන්න
+                  Join the Telegram channel
                 </a>
               </div>
             </motion.div>

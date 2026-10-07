@@ -8,13 +8,13 @@ import { adminPanelEnabled, isAdmin } from "@/lib/admin-auth";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
-  title: "පරිපාලක පිවිසුම",
+  title: "Admin login",
   robots: { index: false, follow: false },
 };
 
 export default async function AdminLoginPage() {
   if (await isAdmin()) redirect("/admin");
-  const settings = getSettings();
+  const settings = await getSettings();
   const panelEnabled = adminPanelEnabled();
 
   return (
@@ -26,29 +26,29 @@ export default async function AdminLoginPage() {
       <div className="order-1 lg:order-2">
         <div className="panel p-7 sm:p-9">
           <p className="mb-2 text-[0.66rem] font-black tracking-[0.32em] text-omni-400 uppercase">
-            පරිපාලක ප්‍රවේශය
+            Admin access
           </p>
           <h1 className="font-display text-2xl font-black text-white sm:text-3xl">
-            {settings.site_name} පැනලයට පිවිසෙන්න
+            Sign in to {settings.site_name}
           </h1>
           <p className="mt-3 mb-7 text-sm leading-relaxed text-void-100">
-            නිකුතු එක් කිරීම, සංස්කරණය හා මාලාවන් කළමනාකරණය සඳහා පිවිසෙන්න.
+            Sign in to publish releases, edit episodes and manage collections.
           </p>
 
           <AdminLoginForm />
 
           {!panelEnabled ? (
             <div className="mt-6 rounded-xl border border-alien-amber/40 bg-alien-amber/10 p-4 text-[0.7rem] leading-relaxed text-alien-amber">
-              <p className="font-bold">පරිපාලක පැනලය අගුළු දමා ඇත</p>
+              <p className="font-bold">The admin panel is locked</p>
               <p className="mt-1">
-                ADMIN_PASSWORD සකසා නැත. පරිසර විචල්‍යයේ <code>ADMIN_PASSWORD</code> සහ{" "}
-                <code>ADMIN_SESSION_SECRET</code> සකසා සේවාදායකය නැවත අරඹන්න.
+                No <code>ADMIN_PASSWORD</code> is configured. Set it (and{" "}
+                <code>ADMIN_SESSION_SECRET</code>) in your environment, then restart the server.
               </p>
             </div>
           ) : (
             <p className="mt-6 rounded-xl border border-void-600 bg-void-950/60 p-4 text-[0.7rem] leading-relaxed text-void-200">
-              පිවිසුම් තොරතුරු පරිසර විචල්‍යයෙන් (<code className="text-omni-300">ADMIN_PASSWORD</code>)
-              සකසා ඇත. ඒවා අමතක වූයේ නම් සේවාදායක ලොගය බලන්න හෝ පරිසර විචල්‍යය නැවත සකසන්න.
+              Credentials are configured through the environment (<code className="text-omni-300">ADMIN_PASSWORD</code>).
+              If you have lost them, check the server log or reset the environment variable.
             </p>
           )}
 
@@ -56,7 +56,7 @@ export default async function AdminLoginPage() {
             href="/"
             className="mt-6 inline-flex items-center gap-2 text-xs font-bold tracking-wider text-void-200 uppercase transition-colors hover:text-omni-300"
           >
-            ← වෙබ් අඩවියට ආපසු
+            ← Back to the site
           </Link>
         </div>
       </div>

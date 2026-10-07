@@ -1,18 +1,18 @@
 /** Small helpers shared by server + client components. */
 
-const SINHALA_MONTHS = [
-  "ජනවාරි",
-  "පෙබරවාරි",
-  "මාර්තු",
-  "අප්‍රේල්",
-  "මැයි",
-  "ජූනි",
-  "ජූලි",
-  "අගෝස්තු",
-  "සැප්තැම්බර්",
-  "ඔක්තෝබර්",
-  "නොවැම්බර්",
-  "දෙසැම්බර්",
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export function slugify(input: string): string {
@@ -25,11 +25,11 @@ export function slugify(input: string): string {
   return base || `release-${Date.now().toString(36)}`;
 }
 
-export function formatDateSi(value?: string | null): string {
+export function formatDateLong(value?: string | null): string {
   if (!value) return "—";
   const date = new Date(value.length <= 10 ? `${value}T00:00:00Z` : value);
   if (Number.isNaN(date.getTime())) return value;
-  return `${date.getUTCFullYear()} ${SINHALA_MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
+  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
 }
 
 export function formatDateIso(value?: string | null): string {
@@ -60,11 +60,11 @@ export function episodeLabel(release: {
   season: number;
   episode_number: number | null;
 }): string {
-  if (release.episode_type === "movie") return "චිත්‍රපටය";
-  if (release.episode_type === "short") return "කෙටි වැඩසටහන";
-  if (release.episode_type === "special") return "විශේෂ වැඩසටහන";
+  if (release.episode_type === "movie") return "Movie";
+  if (release.episode_type === "short") return "Short";
+  if (release.episode_type === "special") return "Special";
   const ep = release.episode_number ?? 0;
-  return `වාරය ${release.season} · කථාංගය ${ep}`;
+  return `Season ${release.season} · Episode ${ep}`;
 }
 
 export function episodeCodeShort(release: { code: string }): string {

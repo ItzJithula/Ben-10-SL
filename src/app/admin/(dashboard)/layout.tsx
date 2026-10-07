@@ -10,7 +10,7 @@ export default async function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   if (!(await isAdmin())) redirect("/admin/login");
-  const settings = getSettings();
+  const settings = await getSettings();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

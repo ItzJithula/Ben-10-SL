@@ -23,7 +23,7 @@ export default function Pagination({
   }
 
   return (
-    <nav className="mt-12 flex flex-wrap items-center justify-center gap-2" aria-label="පිටු">
+    <nav className="mt-12 flex flex-wrap items-center justify-center gap-2" aria-label="Pagination">
       <Link
         href={makeHref(Math.max(1, page - 1))}
         aria-disabled={page === 1}
@@ -34,7 +34,7 @@ export default function Pagination({
             : "border-omni-400/30 text-omni-300 hover:border-omni-400 hover:bg-omni-400/10",
         )}
       >
-        ← පෙර
+        ← Prev
       </Link>
 
       {numbers.map((item, index) =>
@@ -68,7 +68,7 @@ export default function Pagination({
             : "border-omni-400/30 text-omni-300 hover:border-omni-400 hover:bg-omni-400/10",
         )}
       >
-        ඊළඟ →
+        Next →
       </Link>
     </nav>
   );

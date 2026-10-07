@@ -2,7 +2,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { OmnitrixMark } from "./OmnitrixWatch";
 import type { CategoryWithCount } from "@/lib/types";
-import { formatDateSi } from "@/lib/utils";
+import { formatDateLong } from "@/lib/utils";
 
 export default function SiteFooter({
   settings,
@@ -38,17 +38,17 @@ export default function SiteFooter({
             <div className="flex items-center gap-3 text-[0.7rem] font-bold tracking-[0.2em] text-omni-300 uppercase">
               <span className="flex items-center gap-2 rounded-full border border-omni-400/30 px-3 py-1">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-omni-400" />
-                100% සිංහල හඬකැවීම
+                100% Sinhala Dub
               </span>
               <span className="rounded-full border border-omni-400/30 px-3 py-1">
-                {settings.telegram_members || "12,400"}+ සාමාජිකයන්
+                {settings.telegram_members || "12,400"}+ members
               </span>
             </div>
           </div>
 
           <div>
             <h3 className="mb-4 font-display text-xs font-black tracking-[0.28em] text-omni-300 uppercase">
-              මාලාවන්
+              Collections
             </h3>
             <ul className="space-y-2.5 text-sm">
               {categories.map((category) => (
@@ -57,7 +57,7 @@ export default function SiteFooter({
                     href={`/category/${category.slug}`}
                     className="group flex items-center justify-between gap-2 text-void-100 transition-colors hover:text-omni-300"
                   >
-                    <span>{category.name_si || category.name}</span>
+                    <span>{category.name_alt || category.name}</span>
                     <span className="text-xs text-void-300 group-hover:text-omni-400">
                       {category.release_count}
                     </span>
@@ -69,15 +69,15 @@ export default function SiteFooter({
 
           <div>
             <h3 className="mb-4 font-display text-xs font-black tracking-[0.28em] text-omni-300 uppercase">
-              පිටු
+              Pages
             </h3>
             <ul className="space-y-2.5 text-sm">
               {[
-                { href: "/releases", label: "සියලු නිකුතු" },
-                { href: "/movies", label: "චිත්‍රපට හා විශේෂ" },
-                { href: "/how-to-download", label: "බාගැනීමේ උපදෙස්" },
-                { href: "/about", label: "අප ගැන" },
-                { href: "/admin/login", label: "පරිපාලක පිවිසුම" },
+                { href: "/releases", label: "All Releases" },
+                { href: "/movies", label: "Movies & Specials" },
+                { href: "/how-to-download", label: "Download Guide" },
+                { href: "/about", label: "About" },
+                { href: "/admin/login", label: "Admin Login" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -93,10 +93,10 @@ export default function SiteFooter({
 
           <div className="space-y-4">
             <h3 className="font-display text-xs font-black tracking-[0.28em] text-omni-300 uppercase">
-              එක්වන්න
+              Join us
             </h3>
             <p className="text-sm leading-relaxed text-void-100">
-              නව කථාංග පිළිබඳ දැනුම්දීම් සඳහා අපගේ ටෙලිග්‍රෑම් නාලිකාව හා සම්බන්ධ වන්න.
+              Follow our Telegram channel for announcements about new episodes.
             </p>
             <a
               href={settings.telegram_url || "https://t.me/ben10sl"}
@@ -107,11 +107,11 @@ export default function SiteFooter({
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                 <path d="M21.9 4.3 19 19.1c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.5 8.3-7.5c.4-.3-.1-.5-.6-.2L7.5 12.4l-4.4-1.4c-1-.3-1-1 .2-1.4l17-6.6c.8-.3 1.5.2 1.6 1.3Z" />
               </svg>
-              ටෙලිග්‍රෑම් නාලිකාව
+              Telegram Channel
             </a>
             {settings.contact_email ? (
               <p className="text-xs text-void-200">
-                විමසුම්:{" "}
+                Contact:{" "}
                 <a
                   href={`mailto:${settings.contact_email}`}
                   className="text-omni-300 hover:underline"
@@ -133,7 +133,7 @@ export default function SiteFooter({
               <span className="text-omni-400">
                 <OmnitrixMark size={14} />
               </span>
-              නිකුතු ආරම්භය {formatDateSi(settings.site_online_since)}
+              Online since {formatDateLong(settings.site_online_since)}
             </p>
           </div>
         </div>

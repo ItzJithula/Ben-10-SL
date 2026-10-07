@@ -7,7 +7,7 @@ import { saveSettingsAction } from "@/lib/actions";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
-  title: "වෙබ් අඩවි සැකසුම්",
+  title: "Site settings",
   robots: { index: false, follow: false },
 };
 
@@ -26,78 +26,78 @@ interface FieldSpec {
 
 const GROUPS: { title: string; description: string; fields: FieldSpec[] }[] = [
   {
-    title: "වෙබ් අඩවි අනන්‍යතාව",
-    description: "නම, ලාංඡනය සහ පැතිකඩ — මුල් පිටුවේ සහ ශීර්ෂකයේ පෙනෙන තොරතුරු.",
+    title: "Site identity",
+    description: "Name, logo and tagline — what visitors see in the header and footer.",
     fields: [
-      { key: "site_name", label: "වෙබ් අඩවියේ නම", placeholder: "Ben 10 SL" },
-      { key: "site_tagline", label: "උපවාක්‍යය", placeholder: "සිංහල හඬකැවීම" },
-      { key: "logo_text", label: "ලාංඡන පෙළ", placeholder: "Ben 10 SL" },
+      { key: "site_name", label: "Site name", placeholder: "Ben 10 SL" },
+      { key: "site_tagline", label: "Tagline", placeholder: "Sinhala Dubbed Episodes" },
+      { key: "logo_text", label: "Logo text", placeholder: "Ben 10 SL" },
       {
         key: "logo_url",
-        label: "ලාංඡන රූප සබැඳිය",
-        hint: "උඩුගත කළ රූපයේ සබැඳිය හෝ /logo.svg",
+        label: "Logo image URL",
+        hint: "an uploaded file path or /logo.svg",
         placeholder: "https://i.ibb.co/99p93Zfc/file-66.jpg",
       },
       {
         key: "site_description",
-        label: "විස්තරය",
+        label: "Site description",
         type: "textarea",
-        hint: "SEO සහ footer සඳහා",
+        hint: "used for SEO and the footer",
       },
     ],
   },
   {
-    title: "මුල් පිටුවේ වීර දර්ශනය",
-    description: "Hero කොටසේ පෙළ සහ පසුබිම් රූපය.",
+    title: "Home page hero",
+    description: "The text and background image of the hero section.",
     fields: [
-      { key: "hero_kicker", label: "කුඩා පෙළ (kicker)" },
-      { key: "hero_title", label: "ප්‍රධාන මාතෘකාව" },
-      { key: "hero_subtitle", label: "උප මාතෘකාව", type: "textarea" },
-      { key: "hero_image", label: "පසුබිම් රූපය", placeholder: "/art/hero-alien-tech.jpg" },
-      { key: "announcement", label: "ප්‍රකාශන පටිය", hint: "ශීර්ෂකයේ චලනය වන පෙළ" },
+      { key: "hero_kicker", label: "Kicker (small label)" },
+      { key: "hero_title", label: "Headline" },
+      { key: "hero_subtitle", label: "Sub headline", type: "textarea" },
+      { key: "hero_image", label: "Background image", placeholder: "/art/hero-alien-tech.jpg" },
+      { key: "announcement", label: "Announcement ticker", hint: "scrolling text in the header" },
       {
         key: "featured_youtube",
-        label: "විශේෂ වීඩියෝව (YouTube)",
+        label: "Featured video (YouTube)",
         type: "url",
-        hint: "සිංහල හඬකැවූ වීඩියෝවක් පමණක්",
+        hint: "a Sinhala dubbed video only",
       },
     ],
   },
   {
-    title: "සම්බන්ධතා",
-    description: "ටෙලිග්‍රෑම් සහ අනෙකුත් සම්බන්ධතා.",
+    title: "Contact",
+    description: "Telegram links and other ways to get in touch.",
     fields: [
-      { key: "telegram_url", label: "ටෙලිග්‍රෑම් නාලිකාව", type: "url" },
-      { key: "telegram_requests", label: "ඉල්ලීම් සබැඳිය", type: "url" },
-      { key: "telegram_members", label: "සාමාජික ගණන (පෙන්වන)", placeholder: "12,400" },
-      { key: "contact_email", label: "විද්‍යුත් තැපෑල", type: "email" },
-      { key: "site_online_since", label: "ආරම්භක දිනය", type: "date" },
+      { key: "telegram_url", label: "Telegram channel", type: "url" },
+      { key: "telegram_requests", label: "Episode requests link", type: "url" },
+      { key: "telegram_members", label: "Member count (displayed)", placeholder: "12,400" },
+      { key: "contact_email", label: "Contact email", type: "email" },
+      { key: "site_online_since", label: "Online since", type: "date" },
     ],
   },
   {
-    title: "පාදම සහ වගකීම්",
-    description: "footer සටහන් හා නීතිමය පෙළ.",
+    title: "Footer & legal",
+    description: "Footer notes and the legal text shown at the bottom of the site.",
     fields: [
-      { key: "footer_note", label: "පාදම සටහන", type: "textarea" },
-      { key: "disclaimer", label: "වගකීම් ප්‍රතික්ෂේප කිරීම", type: "textarea" },
+      { key: "footer_note", label: "Footer note", type: "textarea" },
+      { key: "disclaimer", label: "Disclaimer", type: "textarea" },
     ],
   },
 ];
 
 export default async function AdminSettingsPage({ searchParams }: { searchParams: SearchParams }) {
   const query = await searchParams;
-  const settings = getSettings();
+  const settings = await getSettings();
 
   return (
     <div className="space-y-6">
       <Reveal>
         <div className="panel p-6">
           <p className="text-[0.66rem] font-black tracking-[0.3em] text-omni-400 uppercase">
-            සැකසුම්
+            Settings
           </p>
-          <h1 className="mt-2 font-display text-xl font-black text-white">වෙබ් අඩවි සැකසුම්</h1>
+          <h1 className="mt-2 font-display text-xl font-black text-white">Site settings</h1>
           <p className="mt-1 text-sm text-void-100">
-            නම, ලාංඡනය, මුල් පිටුවේ පෙළ, ටෙලිග්‍රෑම් සබැඳි සහ පාදමේ තොරතුරු මෙතැනින් යාවත්කාලීන කරන්න.
+            Update the name, logo, home page copy, Telegram links and footer information from here.
           </p>
         </div>
       </Reveal>
@@ -105,28 +105,30 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
       {query.saved ? (
         <p className="rounded-xl border border-omni-400/40 bg-omni-400/10 px-4 py-3 text-xs font-bold text-omni-200">
           {query.uploaded
-            ? "ලාංඡනය උඩුගත කර වෙබ් අඩවිය පුරා යාවත්කාලීන කරන ලදි."
-            : "සැකසුම් සුරකින ලදි — වෙබ් අඩවිය වහාම යාවත්කාලීන විය."}
+            ? "Logo uploaded — it is now live across the whole site."
+            : "Settings saved — the site updated immediately."}
         </p>
       ) : null}
       {query.error ? (
         <p className="rounded-xl border border-alien-red/40 bg-alien-red/10 px-4 py-3 text-xs font-bold text-alien-red">
           {query.error === "size"
-            ? "ගොනුව ඉතා විශාලයි — උපරිම 3MB."
+            ? "That file is too large — 3MB maximum (1.5MB when the logo has to be stored in the database)."
             : query.error === "type"
-              ? "සහාය නොදක්වන ගොනු වර්ගයකි. PNG, JPG, WEBP හෝ SVG භාවිතා කරන්න."
-              : "ගොනුවක් තෝරා නැත."}
+              ? "Unsupported file type. Use PNG, JPG, WEBP or SVG."
+              : "No file was selected."}
         </p>
       ) : null}
 
       <Reveal>
         <section className="panel p-6">
           <h2 className="font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-            ලාංඡනය උඩුගත කරන්න
+            Upload a logo
           </h2>
           <p className="mt-1 mb-5 text-xs text-void-200">
-            ඔබට කැමති රූපය (PNG / JPG / WEBP / SVG, උපරිම 3MB) මෙතැනින් උඩුගත කරන්න — ශීර්ෂකය, පාදම සහ
-            පරිපාලක පැනලය පුරා වහාම යාවත්කාලීන වේ.
+            Upload your own artwork (PNG / JPG / WEBP / SVG, 3MB maximum). It replaces the logo in the
+            header, the footer and the admin panel straight away. On a read-only host such as Vercel the
+            file is stored in the database instead of the filesystem, which caps it at 1.5MB — for bigger
+            artwork paste a hosted image URL into the Logo field below.
           </p>
           <LogoUploadForm currentUrl={settings.logo_url || "/logo.svg"} />
         </section>
@@ -184,10 +186,10 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         <div className="sticky bottom-4 z-10">
           <div className="panel flex flex-wrap items-center justify-between gap-3 p-4">
             <p className="text-xs text-void-100">
-              වෙනස්කම් සුරැකීමෙන් පසු වෙබ් අඩවියේ සියලු පිටු යාවත්කාලීන වේ.
+              Saving updates every page of the site.
             </p>
             <SubmitButton className="rounded-full bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-7 py-3 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni">
-              සියලු සැකසුම් සුරකින්න
+              Save all settings
             </SubmitButton>
           </div>
         </div>

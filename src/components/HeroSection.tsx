@@ -112,7 +112,7 @@ export default function HeroSection({
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                 <path d="M8 5v14l11-7z" />
               </svg>
-              නැරඹීම අරඹන්න
+              Start Watching
               <span className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/50 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </Link>
 
@@ -125,7 +125,7 @@ export default function HeroSection({
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                 <path d="M21.9 4.3 19 19.1c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.5 8.3-7.5c.4-.3-.1-.5-.6-.2L7.5 12.4l-4.4-1.4c-1-.3-1-1 .2-1.4l17-6.6c.8-.3 1.5.2 1.6 1.3Z" />
               </svg>
-              ටෙලිග්‍රෑම්
+              Telegram
             </a>
           </motion.div>
 
@@ -136,10 +136,10 @@ export default function HeroSection({
             className="mt-12 grid max-w-lg grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4"
           >
             {[
-              { label: "නිකුතු", value: stats.releases },
-              { label: "කථාංග", value: stats.episodes },
-              { label: "චිත්‍රපට", value: stats.movies },
-              { label: "පැය", value: stats.hours },
+              { label: "Releases", value: stats.releases },
+              { label: "Episodes", value: stats.episodes },
+              { label: "Movies", value: stats.movies },
+              { label: "Hours", value: stats.hours },
             ].map((item) => (
               <div key={item.label}>
                 <dt className="text-[0.62rem] font-black tracking-[0.24em] text-void-200 uppercase">
@@ -161,7 +161,7 @@ export default function HeroSection({
           <div className="absolute inset-0 -z-10 rounded-full bg-omni-400/15 blur-[90px]" />
           <OmnitrixWatch size={330} className="animate-float" />
           <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-omni-400/40 bg-void-950/85 px-4 py-1.5 text-[0.62rem] font-black tracking-[0.24em] text-omni-300 uppercase backdrop-blur">
-            ක්ලික් කරන්න · ක්‍රියාත්මක කරන්න
+            Click to activate
           </div>
         </motion.div>
       </div>

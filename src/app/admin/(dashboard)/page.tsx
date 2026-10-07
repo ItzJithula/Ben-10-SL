@@ -3,26 +3,26 @@ import Link from "next/link";
 
 import Reveal from "@/components/Reveal";
 import { getAdminStats } from "@/lib/queries";
-import { formatDateSi, formatViews, truncate } from "@/lib/utils";
+import { formatDateLong, formatViews, truncate } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "පරිපාලක එක්ස්කෑප්",
+  title: "Dashboard",
   robots: { index: false, follow: false },
 };
 
-export default function AdminDashboardPage() {
-  const stats = getAdminStats();
+export default async function AdminDashboardPage() {
+  const stats = await getAdminStats();
   const maxCount = Math.max(1, ...stats.perCategory.map((item) => item.count));
 
   const cards = [
-    { label: "මුළු නිකුතු", value: stats.releases, accent: "#39FF14", hint: "සියලු මාලාවන්" },
-    { label: "ප්‍රකාශිත", value: stats.published, accent: "#00E5FF", hint: "වෙබ් අඩවියේ පෙනෙන" },
-    { label: "කෙටුම්පත්", value: stats.drafts, accent: "#FFC400", hint: "ප්‍රකාශිත නොවූ" },
-    { label: "මාලාවන්", value: stats.categories, accent: "#B026FF", hint: "ප්‍රධාන එකතු" },
-    { label: "චිත්‍රපට", value: stats.movieCount, accent: "#FF2E88", hint: "සම්පූර්ණ දිග" },
-    { label: "බාගැනීම් සබැඳි", value: stats.linkCount, accent: "#FF7A00", hint: "සියලු ගුණත්ව" },
-    { label: "නැරඹුම්", value: formatViews(stats.totalViews), accent: "#7DFF3D", hint: "මුළු ගණන" },
-    { label: "අද වැඩ", value: new Date().getDate(), accent: "#00E5FF", hint: "දිනපතා" },
+    { label: "Total releases", value: stats.releases, accent: "#39FF14", hint: "across all collections" },
+    { label: "Published", value: stats.published, accent: "#00E5FF", hint: "visible on the site" },
+    { label: "Drafts", value: stats.drafts, accent: "#FFC400", hint: "not published yet" },
+    { label: "Collections", value: stats.categories, accent: "#B026FF", hint: "main series" },
+    { label: "Movies", value: stats.movieCount, accent: "#FF2E88", hint: "feature length" },
+    { label: "Download links", value: stats.linkCount, accent: "#FF7A00", hint: "all qualities" },
+    { label: "Total views", value: formatViews(stats.totalViews), accent: "#7DFF3D", hint: "all releases" },
+    { label: "Today", value: new Date().getDate(), accent: "#00E5FF", hint: "daily check-in" },
   ];
 
   return (
@@ -31,20 +31,20 @@ export default function AdminDashboardPage() {
         <div className="panel flex flex-wrap items-center justify-between gap-5 p-6">
           <div>
             <p className="text-[0.66rem] font-black tracking-[0.3em] text-omni-400 uppercase">
-              පරිපාලක පැනලය
+              Admin panel
             </p>
             <h1 className="mt-2 font-display text-2xl font-black text-white">
-              ආයුබෝවන් — එක්ස්කෑප්
+              Welcome back
             </h1>
             <p className="mt-2 text-sm text-void-100">
-              මෙතැනින් නව නිකුතු එක් කරන්න, මාලාවන් කළමනාකරණය කරන්න හෝ වෙබ් අඩවියේ තොරතුරු යාවත්කාලීන කරන්න.
+              Add new releases, manage your collections, or update the site information from here.
             </p>
           </div>
           <Link
             href="/admin/releases/new"
             className="rounded-full bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni transition-transform hover:scale-[1.03]"
           >
-            + නව නිකුතුවක්
+            + New release
           </Link>
         </div>
       </Reveal>
@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
         <Reveal>
           <div className="panel p-6">
             <h2 className="mb-5 font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-              මාලාවන් අනුව නිකුතු
+              Releases by collection
             </h2>
             <div className="space-y-4">
               {stats.perCategory.map((item) => (
@@ -86,7 +86,7 @@ export default function AdminDashboardPage() {
                       href={`/category/${item.slug}`}
                       className="font-bold text-void-50 hover:text-omni-300"
                     >
-                      {item.name_si || item.name}
+                      {item.name_alt || item.name}
                     </Link>
                     <span className="font-black" style={{ color: item.accent }}>
                       {item.count}
@@ -111,13 +111,13 @@ export default function AdminDashboardPage() {
           <div className="panel p-6">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-                අලුත්ම නිකුතු
+                Latest releases
               </h2>
               <Link
                 href="/admin/releases"
                 className="text-[0.68rem] font-black tracking-wider text-omni-400 uppercase hover:text-omni-300"
               >
-                සියල්ල →
+                View all →
               </Link>
             </div>
 
@@ -143,15 +143,15 @@ export default function AdminDashboardPage() {
                       {release.title}
                     </span>
                     <span className="mt-0.5 block text-[0.66rem] text-void-200">
-                      {release.category_name} · {release.status === "published" ? "ප්‍රකාශිත" : "කෙටුම්පත"} ·{" "}
-                      {formatDateSi(release.created_at)}
+                      {release.category_name} · {release.status === "published" ? "Published" : "Draft"} ·{" "}
+                      {formatDateLong(release.created_at)}
                     </span>
                   </span>
                 </Link>
               ))}
 
               {stats.latest.length === 0 ? (
-                <p className="text-sm text-void-200">එක්ස්කෑප් එක හිස් — පළමු නිකුතුව එක් කරන්න.</p>
+                <p className="text-sm text-void-200">Nothing here yet — add your first release.</p>
               ) : null}
             </div>
           </div>
@@ -161,37 +161,37 @@ export default function AdminDashboardPage() {
       <Reveal>
         <div className="panel p-6">
           <h2 className="mb-4 font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-            ඉක්මන් ක්‍රියා
+            Quick actions
           </h2>
           <div className="flex flex-wrap gap-3">
             <Link
               href="/admin/releases/new"
               className="rounded-full border border-omni-400/40 px-5 py-2.5 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/10"
             >
-              නව නිකුතුව
+              New release
             </Link>
             <Link
               href="/admin/categories"
               className="rounded-full border border-omni-400/40 px-5 py-2.5 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/10"
             >
-              මාලාවක් එක් කරන්න
+              Add a collection
             </Link>
             <Link
               href="/admin/settings"
               className="rounded-full border border-omni-400/40 px-5 py-2.5 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/10"
             >
-              වෙබ් අඩවි සැකසුම්
+              Site settings
             </Link>
             <Link
               href="/"
               className="rounded-full border border-void-500 px-5 py-2.5 text-xs font-black tracking-wider text-void-100 uppercase transition-colors hover:border-omni-400/50 hover:text-omni-300"
             >
-              වෙබ් අඩවිය බලන්න
+              View live site
             </Link>
           </div>
           <p className="mt-5 rounded-xl border border-void-600 bg-void-950/60 p-4 text-[0.7rem] leading-relaxed text-void-200">
-            <strong className="text-void-100">සටහන:</strong> {truncate(
-              "සියලුම නිකුතු සිංහල හඬකැවීම ලෙසම සුරැකේ. නිකුත් කේතය (code) අනන්‍ය විය යුතුය; එකම කේතයක් දෙවරක් භාවිතා නොකරන්න.",
+            <strong className="text-void-100">Note:</strong> {truncate(
+              "Every release is stored as a Sinhala dub. Release codes must be unique — do not use the same code twice.",
               140,
             )}
           </p>

@@ -2,15 +2,15 @@ import { RevealGroup, RevealItem } from "./Reveal";
 
 /**
  * Ben 10 flavour section — the Omnitrix roster.
- * Alien names stay in English (as in the show) with Sinhala descriptions.
+ * Alien names stay exactly as they are in the show, with short English notes.
  */
 const ALIENS = [
-  { name: "Heatblast", si: "ගිනි පිට", power: "ගිනි නිකුත් කිරීම", color: "#FF7A00" },
-  { name: "XLR8", si: "අකුණු වේගය", power: "අති වේගී චලනය", color: "#00E5FF" },
-  { name: "Four Arms", si: "අත් හතර", power: "මහා ශාරීරික බලය", color: "#FF2E88" },
-  { name: "Diamondhead", si: "දියමන්ති", power: "දියමන්ති සන්නාහය", color: "#7DDAFF" },
-  { name: "Upgrade", si: "උපග්‍රේඩ්", power: "යන්ත්‍ර සමඟ එක්වීම", color: "#39FF14" },
-  { name: "Ghostfreak", si: "අවතාරය", power: "අදෘශ්‍යමාන බව", color: "#B026FF" },
+  { name: "Heatblast", role: "Pyronite", power: "Throws fire and heat blasts", color: "#FF7A00" },
+  { name: "XLR8", role: "Kineceleran", power: "Moves at lightning speed", color: "#00E5FF" },
+  { name: "Four Arms", role: "Tetramand", power: "Crushing brute strength", color: "#FF2E88" },
+  { name: "Diamondhead", role: "Petrosapien", power: "Diamond-hard armour", color: "#7DDAFF" },
+  { name: "Upgrade", role: "Galvanic Mechamorph", power: "Merges with any machine", color: "#39FF14" },
+  { name: "Ghostfreak", role: "Ectonurite", power: "Invisible and intangible", color: "#B026FF" },
 ];
 
 export default function AlienStrip() {
@@ -40,7 +40,7 @@ export default function AlienStrip() {
               <p className="font-display text-xs font-black tracking-wider text-white uppercase">
                 {alien.name}
               </p>
-              <p className="mt-1 text-[0.68rem] font-bold text-void-200">{alien.si}</p>
+              <p className="mt-1 text-[0.68rem] font-bold text-void-200">{alien.role}</p>
             </div>
             <p className="text-[0.7rem] leading-relaxed text-void-100">{alien.power}</p>
           </div>

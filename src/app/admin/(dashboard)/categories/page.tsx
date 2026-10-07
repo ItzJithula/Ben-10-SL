@@ -7,7 +7,7 @@ import { deleteCategoryAction, saveCategoryAction } from "@/lib/actions";
 import { listCategories } from "@/lib/queries";
 
 export const metadata: Metadata = {
-  title: "මාලාවන් කළමනාකරණය",
+  title: "Manage collections",
   robots: { index: false, follow: false },
 };
 
@@ -22,36 +22,41 @@ const inputClass =
 
 export default async function AdminCategoriesPage({ searchParams }: { searchParams: SearchParams }) {
   const query = await searchParams;
-  const categories = listCategories();
+  const categories = await listCategories();
 
   return (
     <div className="space-y-6">
       <Reveal>
         <div className="panel p-6">
           <p className="text-[0.66rem] font-black tracking-[0.3em] text-omni-400 uppercase">
-            ප්‍රධාන එකතුව
+            Main collections
           </p>
-          <h1 className="mt-2 font-display text-xl font-black text-white">මාලාවන් කළමනාකරණය</h1>
+          <h1 className="mt-2 font-display text-xl font-black text-white">Manage collections</h1>
           <p className="mt-1 text-sm text-void-100">
-            ක්ලැසික්, එලියන් ෆෝස්, අල්ටිමේට් එලියන්, ඕම්නිවර්ස්, රීබූට් සහ චිත්‍රපට වැනි ප්‍රධාන එකතු
-            මෙතැනින් සකසන්න. එක් එක් මාලාවට තමන්ගේම වර්ණයක් (accent) ඇත.
+            Arrange the main collections — Classic, Alien Force, Ultimate Alien, Omniverse,
+            Reboot and Movies & Specials. Each collection has its own accent colour.
           </p>
         </div>
       </Reveal>
 
       {query.saved ? (
         <p className="rounded-xl border border-omni-400/40 bg-omni-400/10 px-4 py-3 text-xs font-bold text-omni-200">
-          මාලාව සුරකින ලදි.
+          Collection saved.
         </p>
       ) : null}
       {query.deleted ? (
         <p className="rounded-xl border border-alien-amber/40 bg-alien-amber/10 px-4 py-3 text-xs font-bold text-alien-amber">
-          මාලාව ඉවත් කරන ලදි.
+          Collection deleted.
+        </p>
+      ) : null}
+      {query.error === "slug" ? (
+        <p className="rounded-xl border border-alien-red/40 bg-alien-red/10 px-4 py-3 text-xs font-bold text-alien-red">
+          Another collection already uses that slug. Pick a different one.
         </p>
       ) : null}
       {query.error === "inuse" ? (
         <p className="rounded-xl border border-alien-red/40 bg-alien-red/10 px-4 py-3 text-xs font-bold text-alien-red">
-          මෙම මාලාවේ නිකුතු ඇති බැවින් ඉවත් කළ නොහැක. පළමුව නිකුතු වෙනත් මාලාවකට මාරු කරන්න.
+          This collection still has releases, so it cannot be deleted. Move those releases to another collection first.
         </p>
       ) : null}
 
@@ -73,10 +78,10 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                     />
                     <div>
                       <p className="font-display text-sm font-black text-white">
-                        {category.name_si || category.name}
+                        {category.name_alt || category.name}
                       </p>
                       <p className="text-[0.66rem] font-bold tracking-[0.2em] text-void-200 uppercase">
-                        {category.name} · /{category.slug} · {category.release_count} නිකුතු
+                        {category.name} · /{category.slug} · {category.release_count} releases
                       </p>
                     </div>
                   </div>
@@ -86,15 +91,15 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                       href={`/category/${category.slug}`}
                       className="rounded-lg border border-void-500 px-3 py-1.5 text-xs font-bold text-void-100 transition-colors hover:border-omni-400/50 hover:text-omni-300"
                     >
-                      බලන්න
+                      View
                     </Link>
                     <form action={deleteCategoryAction}>
                       <input type="hidden" name="id" value={category.id} />
                       <ConfirmSubmit
                         className="border-alien-red/40 text-alien-red hover:bg-alien-red/10"
-                        message={`“${category.name}” මාලාව ඉවත් කරන්නද?`}
+                        message={`Delete the “${category.name}” collection?`}
                       >
-                        ඉවත් කරන්න
+                        Delete
                       </ConfirmSubmit>
                     </form>
                   </div>
@@ -102,22 +107,22 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
 
                 <details className="border-t border-void-700">
                   <summary className="cursor-pointer px-5 py-3 text-[0.68rem] font-black tracking-[0.2em] text-omni-300 uppercase transition-colors hover:bg-omni-400/5">
-                    සංස්කරණය කරන්න
+                    Edit
                   </summary>
 
                   <form action={saveCategoryAction} className="grid gap-4 p-5 sm:grid-cols-2">
                     <input type="hidden" name="id" value={category.id} />
                     <label className="block">
                       <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                        ඉංග්‍රීසි නම
+                        Name
                       </span>
                       <input name="name" defaultValue={category.name} className={inputClass} required />
                     </label>
                     <label className="block">
                       <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                        සිංහල නම
+                        Alternate name
                       </span>
-                      <input name="name_si" defaultValue={category.name_si} className={inputClass} />
+                      <input name="name_alt" defaultValue={category.name_alt} className={inputClass} />
                     </label>
                     <label className="block">
                       <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
@@ -127,7 +132,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                     </label>
                     <label className="block">
                       <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                        වර්ණය
+                        Accent colour
                       </span>
                       <input
                         name="accent"
@@ -138,7 +143,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                     </label>
                     <label className="block sm:col-span-2">
                       <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                        විස්තරය
+                        Description
                       </span>
                       <textarea
                         name="description"
@@ -149,7 +154,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                     </label>
                     <label className="block">
                       <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                        අනුපිළිවෙල
+                        Sort order
                       </span>
                       <input
                         name="sort_order"
@@ -160,7 +165,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                     </label>
                     <div className="flex items-end">
                       <SubmitButton className="rounded-full bg-linear-to-r from-omni-400 to-omni-600 px-6 py-2.5 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase">
-                        සුරකින්න
+                        Save
                       </SubmitButton>
                     </div>
                   </form>
@@ -174,24 +179,24 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
         <Reveal direction="left">
           <div className="panel p-6 lg:sticky lg:top-24">
             <h2 className="font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-              නව මාලාවක්
+              New collection
             </h2>
             <p className="mt-2 mb-5 text-xs leading-relaxed text-void-200">
-              නව එකතුවක් එක් කරන්න — උදා: “Ben 10 Kai” හෝ වෙනත් විශේෂ එකතුවක්.
+              Add another collection — for example a special or a spin-off series.
             </p>
 
             <form action={saveCategoryAction} className="space-y-4">
               <label className="block">
                 <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                  ඉංග්‍රීසි නම *
+                  Name *
                 </span>
                 <input name="name" className={inputClass} placeholder="Special Collection" required />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                  සිංහල නම
+                  Alternate name
                 </span>
-                <input name="name_si" className={inputClass} placeholder="විශේෂ එකතුව" />
+                <input name="name_alt" className={inputClass} placeholder="2005 Series" />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
@@ -201,7 +206,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                  වර්ණය
+                  Accent colour
                 </span>
                 <input
                   name="accent"
@@ -212,13 +217,13 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                  විස්තරය
+                  Description
                 </span>
                 <textarea name="description" rows={3} className={inputClass} />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[0.66rem] font-black tracking-[0.2em] text-void-100 uppercase">
-                  අනුපිළිවෙල
+                  Sort order
                 </span>
                 <input
                   name="sort_order"
@@ -229,7 +234,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
               </label>
 
               <SubmitButton className="w-full rounded-full bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni">
-                මාලාව එක් කරන්න
+                Add collection
               </SubmitButton>
             </form>
           </div>

@@ -1,148 +1,338 @@
-import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
 import { dataDir } from "./server-paths";
 
 /**
- * SQLite storage for Ben 10 SL.
- * The database lives in ./data/ben10sl.db and is created + seeded automatically
- * the first time the app boots, so a fresh clone just runs `npm run dev`.
+ * Database layer — PostgreSQL on Neon, queried over HTTPS.
+ *
+ * The connection string is read from the environment (Vercel sets `DATABASE_URL`
+ * when you attach a Neon database to the project):
+ *
+ *   DATABASE_URL=postgresql://user:password@ep-xxx-pooler.region.aws.neon.tech/db?sslmode=require
+ *
+ * Nothing else has to be done by hand: the first query of a boot creates the
+ * tables (`CREATE TABLE IF NOT EXISTS`) and seeds the demo archive when the
+ * database is still empty. Everything is idempotent, so restarts and concurrent
+ * cold starts are safe.
+ *
+ * Local development without a Neon database falls back to an embedded
+ * PostgreSQL (PGlite) that persists to ./data/pglite, so `npm run dev` keeps
+ * working with zero configuration.
  */
 
-type DB = Database.Database;
+/* ------------------------------------------------------------------ */
+/* Driver                                                              */
+/* ------------------------------------------------------------------ */
 
-const globalForDb = globalThis as unknown as { __ben10slDb?: DB };
-
-export function getDb(): DB {
-  if (globalForDb.__ben10slDb) return globalForDb.__ben10slDb;
-
-  const dir = dataDir();
-  fs.mkdirSync(dir, { recursive: true });
-  const db = new Database(path.join(dir, "ben10sl.db"));
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-
-  migrate(db);
-  seed(db);
-
-  globalForDb.__ben10slDb = db;
-  return db;
+export interface Statement {
+  text: string;
+  params?: unknown[];
 }
 
-function migrate(db: DB) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      name         TEXT NOT NULL,
-      name_si      TEXT NOT NULL DEFAULT '',
-      slug         TEXT NOT NULL UNIQUE,
-      description  TEXT NOT NULL DEFAULT '',
-      accent       TEXT NOT NULL DEFAULT '#39FF14',
-      sort_order   INTEGER NOT NULL DEFAULT 0,
-      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+interface Driver {
+  /** Name of the active backend, handy in logs. */
+  label: "neon" | "pglite";
+  query<T>(text: string, params: unknown[]): Promise<T[]>;
+  /** Runs every statement in one Postgres transaction (single round trip). */
+  transaction(statements: Statement[]): Promise<void>;
+}
 
-    CREATE TABLE IF NOT EXISTS releases (
-      id               INTEGER PRIMARY KEY AUTOINCREMENT,
-      category_id      INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
-      code             TEXT NOT NULL DEFAULT '',
-      title            TEXT NOT NULL,
-      title_en         TEXT NOT NULL DEFAULT '',
-      slug             TEXT NOT NULL UNIQUE,
-      season           INTEGER NOT NULL DEFAULT 1,
-      episode_number   INTEGER,
-      episode_type     TEXT NOT NULL DEFAULT 'episode',
-      synopsis         TEXT NOT NULL DEFAULT '',
-      thumbnail        TEXT NOT NULL DEFAULT '',
-      quality          TEXT NOT NULL DEFAULT '720p',
-      duration_minutes INTEGER NOT NULL DEFAULT 22,
-      dubbed_studio    TEXT NOT NULL DEFAULT '',
-      dubbed_date      TEXT NOT NULL DEFAULT '',
-      aired_date       TEXT NOT NULL DEFAULT '',
-      telegram_url     TEXT NOT NULL DEFAULT '',
-      source           TEXT NOT NULL DEFAULT '',
-      language         TEXT NOT NULL DEFAULT 'sinhala',
-      tags             TEXT NOT NULL DEFAULT '',
-      views            INTEGER NOT NULL DEFAULT 0,
-      featured         INTEGER NOT NULL DEFAULT 0,
-      status           TEXT NOT NULL DEFAULT 'published',
-      created_at       TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+const CONNECTION_KEYS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
 
-    CREATE TABLE IF NOT EXISTS qualities (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      release_id    INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
-      label         TEXT NOT NULL,
-      url           TEXT NOT NULL,
-      file_size_mb  INTEGER,
-      position      INTEGER NOT NULL DEFAULT 0
-    );
+export function connectionString(): string | null {
+  for (const key of CONNECTION_KEYS) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return null;
+}
 
-    CREATE TABLE IF NOT EXISTS settings (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
+export function usingNeon(): boolean {
+  return connectionString() !== null;
+}
 
-    CREATE INDEX IF NOT EXISTS idx_releases_category ON releases(category_id);
-    CREATE INDEX IF NOT EXISTS idx_releases_status   ON releases(status);
-    CREATE INDEX IF NOT EXISTS idx_releases_type     ON releases(episode_type);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_releases_code ON releases(code) WHERE code <> '';
-    CREATE INDEX IF NOT EXISTS idx_qualities_release ON qualities(release_id);
-  `);
+/** `to_char(...)` expression used for created_at / updated_at (kept as text). */
+export const NOW_SQL = `to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')`;
+
+async function createNeonDriver(url: string): Promise<Driver> {
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+
+  return {
+    label: "neon",
+    async query<T>(text: string, params: unknown[]): Promise<T[]> {
+      return (await sql.query(text, params)) as T[];
+    },
+    async transaction(statements: Statement[]): Promise<void> {
+      if (statements.length === 0) return;
+      await sql.transaction((txn) =>
+        statements.map((statement) => txn.query(statement.text, statement.params ?? [])),
+      );
+    },
+  };
+}
+
+/** Embedded PostgreSQL for local development (no DATABASE_URL required). */
+async function createLocalDriver(): Promise<Driver> {
+  const { PGlite } = await import("@electric-sql/pglite");
+  const dir = path.join(dataDir(), "pglite");
+  fs.mkdirSync(dir, { recursive: true });
+  const pg = new PGlite(dir);
+  await pg.waitReady;
+
+  return {
+    label: "pglite",
+    async query<T>(text: string, params: unknown[]): Promise<T[]> {
+      const result = await pg.query<T>(text, params);
+      return result.rows;
+    },
+    async transaction(statements: Statement[]): Promise<void> {
+      if (statements.length === 0) return;
+      await pg.transaction(async (tx) => {
+        for (const statement of statements) {
+          await tx.query(statement.text, statement.params ?? []);
+        }
+      });
+    },
+  };
+}
+
+const globalForDb = globalThis as unknown as {
+  __ben10slDriver?: Promise<Driver>;
+  __ben10slReady?: WeakMap<Driver, Promise<void>>;
+};
+
+function driver(): Promise<Driver> {
+  if (!globalForDb.__ben10slDriver) {
+    const url = connectionString();
+    let pending: Promise<Driver>;
+
+    if (url) {
+      pending = createNeonDriver(url);
+    } else if (process.env.NODE_ENV === "production") {
+      pending = Promise.reject(
+        new Error(
+          "[Ben 10 SL] DATABASE_URL is not set. Add your Neon connection string " +
+            "(Project → Connection string) to the environment variables — on Vercel that is " +
+            "Settings → Environment Variables → DATABASE_URL — and redeploy.",
+        ),
+      );
+    } else {
+      console.warn(
+        "[Ben 10 SL] DATABASE_URL is not set — using the embedded local PostgreSQL (./data/pglite).",
+      );
+      pending = createLocalDriver();
+    }
+
+    // A failed connection must not be cached forever: drop it so the next
+    // request can retry (e.g. after fixing the environment variable).
+    pending.catch(() => {
+      if (globalForDb.__ben10slDriver === pending) globalForDb.__ben10slDriver = undefined;
+    });
+
+    globalForDb.__ben10slDriver = pending;
+  }
+
+  return globalForDb.__ben10slDriver;
+}
+
+/** Resolves the driver and makes sure the schema exists (once per process). */
+async function ready(): Promise<Driver> {
+  const active = await driver();
+
+  globalForDb.__ben10slReady ??= new WeakMap();
+  let initialised = globalForDb.__ben10slReady.get(active);
+  if (!initialised) {
+    initialised = ensureDatabase(active);
+    globalForDb.__ben10slReady.set(active, initialised);
+    initialised.catch(() => {
+      globalForDb.__ben10slReady?.delete(active);
+    });
+  }
+  await initialised;
+
+  return active;
 }
 
 /* ------------------------------------------------------------------ */
-/* Seed data — Sinhala dubbed Ben 10 releases                         */
+/* Public query helpers                                                */
+/* ------------------------------------------------------------------ */
+
+/** Runs a query and returns its rows. Use `$1`, `$2`, … placeholders. */
+export async function query<T = Record<string, unknown>>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const active = await ready();
+  return active.query<T>(text, params);
+}
+
+/** Runs a query that is expected to return at most one row. */
+export async function queryOne<T = Record<string, unknown>>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T | null> {
+  const rows = await query<T>(text, params);
+  return rows[0] ?? null;
+}
+
+/** Runs a write statement whose result is not needed. */
+export async function execute(text: string, params: unknown[] = []): Promise<void> {
+  await query(text, params);
+}
+
+/** Runs several statements atomically, in a single transaction. */
+export async function transaction(statements: Statement[]): Promise<void> {
+  const active = await ready();
+  await active.transaction(statements);
+}
+
+/** True when the error is a Postgres unique-constraint violation (23505). */
+export function isUniqueViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { code?: string; message?: string };
+  if (candidate.code === "23505") return true;
+  return /duplicate key value|unique constraint/i.test(candidate.message ?? "");
+}
+
+/* ------------------------------------------------------------------ */
+/* Schema                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Notes on a few deliberate choices:
+ *  - `created_at` / `updated_at` are text in `YYYY-MM-DD HH24:MI:SS` (UTC).
+ *    The UI formats them as plain strings and sorts them lexicographically,
+ *    which is chronological in this format, so no timezone surprises.
+ *  - `featured` is a 0/1 integer flag rather than a boolean so the archive
+ *    keeps its simple `featured DESC` ordering and form handling.
+ */
+const SCHEMA: Statement[] = [
+  {
+    text: `CREATE TABLE IF NOT EXISTS categories (
+             id           INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+             name         TEXT NOT NULL,
+             name_alt     TEXT NOT NULL DEFAULT '',
+             slug         TEXT NOT NULL UNIQUE,
+             description  TEXT NOT NULL DEFAULT '',
+             accent       TEXT NOT NULL DEFAULT '#39FF14',
+             sort_order   INTEGER NOT NULL DEFAULT 0,
+             created_at   TEXT NOT NULL DEFAULT ${NOW_SQL}
+           )`,
+  },
+  {
+    text: `CREATE TABLE IF NOT EXISTS releases (
+             id               INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+             category_id      INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+             code             TEXT NOT NULL DEFAULT '',
+             title            TEXT NOT NULL,
+             subtitle         TEXT NOT NULL DEFAULT '',
+             slug             TEXT NOT NULL UNIQUE,
+             season           INTEGER NOT NULL DEFAULT 1,
+             episode_number   INTEGER,
+             episode_type     TEXT NOT NULL DEFAULT 'episode'
+                              CHECK (episode_type IN ('episode','movie','special','short')),
+             synopsis         TEXT NOT NULL DEFAULT '',
+             thumbnail        TEXT NOT NULL DEFAULT '',
+             quality          TEXT NOT NULL DEFAULT '720p',
+             duration_minutes INTEGER NOT NULL DEFAULT 22,
+             dubbed_studio    TEXT NOT NULL DEFAULT '',
+             dubbed_date      TEXT NOT NULL DEFAULT '',
+             aired_date       TEXT NOT NULL DEFAULT '',
+             telegram_url     TEXT NOT NULL DEFAULT '',
+             source           TEXT NOT NULL DEFAULT '',
+             language         TEXT NOT NULL DEFAULT 'sinhala',
+             tags             TEXT NOT NULL DEFAULT '',
+             views            INTEGER NOT NULL DEFAULT 0,
+             featured         INTEGER NOT NULL DEFAULT 0,
+             status           TEXT NOT NULL DEFAULT 'published'
+                              CHECK (status IN ('published','draft')),
+             created_at       TEXT NOT NULL DEFAULT ${NOW_SQL},
+             updated_at       TEXT NOT NULL DEFAULT ${NOW_SQL}
+           )`,
+  },
+  {
+    text: `CREATE TABLE IF NOT EXISTS qualities (
+             id            INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+             release_id    INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+             label         TEXT NOT NULL,
+             url           TEXT NOT NULL,
+             file_size_mb  INTEGER,
+             position      INTEGER NOT NULL DEFAULT 0
+           )`,
+  },
+  {
+    text: `CREATE TABLE IF NOT EXISTS settings (
+             key   TEXT PRIMARY KEY,
+             value TEXT NOT NULL
+           )`,
+  },
+  { text: `CREATE INDEX IF NOT EXISTS idx_releases_category ON releases(category_id)` },
+  { text: `CREATE INDEX IF NOT EXISTS idx_releases_status ON releases(status)` },
+  { text: `CREATE INDEX IF NOT EXISTS idx_releases_type ON releases(episode_type)` },
+  {
+    text: `CREATE UNIQUE INDEX IF NOT EXISTS idx_releases_code
+             ON releases(code) WHERE code <> ''`,
+  },
+  { text: `CREATE INDEX IF NOT EXISTS idx_qualities_release ON qualities(release_id)` },
+];
+
+/* ------------------------------------------------------------------ */
+/* Seed data — Ben 10 releases with Sinhala dubbed audio               */
 /* ------------------------------------------------------------------ */
 
 const CATEGORY_SEED = [
   {
     name: "Ben 10 Classic",
-    name_si: "බෙන් 10 ක්ලැසික්",
+    name_alt: "2005 Series",
     slug: "classic",
-    description: "මුල් මාලාව — බෙන් ටෙනිසන් සහ ඔම්නිට්‍රික්ස්හි ආරම්භය.",
+    description: "The original series — where Ben Tennyson first found the Omnitrix.",
     accent: "#39FF14",
     sort_order: 1,
   },
   {
     name: "Alien Force",
-    name_si: "එලියන් ෆෝස්",
+    name_alt: "2008 Series",
     slug: "alien-force",
-    description: "වසර 5කට පසු — නව එලියන් කණ්ඩායම සමඟ බෙන් නැවත පැමිණේ.",
+    description: "Five years later — Ben returns with a brand-new team of aliens.",
     accent: "#00E5FF",
     sort_order: 2,
   },
   {
     name: "Ultimate Alien",
-    name_si: "අල්ටිමේට් එලියන්",
+    name_alt: "2010 Series",
     slug: "ultimate-alien",
-    description: "අල්ටිමේට් රූපාන්තරණ සහ වඩාත් බරපතල සටන්.",
+    description: "Ultimate transformations and tougher, more serious fights.",
     accent: "#FF7A00",
     sort_order: 3,
   },
   {
     name: "Omniverse",
-    name_si: "ඕම්නිවර්ස්",
+    name_alt: "2012 Series",
     slug: "omniverse",
-    description: "බහු විශ්ව ගමන් — නවීන පෙනුම සහ නව එලියන්ස්.",
+    description: "A multiverse road trip with a fresh art style and new aliens.",
     accent: "#B026FF",
     sort_order: 4,
   },
   {
     name: "Reboot",
-    name_si: "රීබූට්",
+    name_alt: "2016 Series",
     slug: "reboot",
-    description: "2016 නව නිර්මාණය — සැහැල්ලු හා විනෝදජනක කථාංග.",
+    description: "The 2016 reboot — lighter, faster and funnier episodes.",
     accent: "#FFC400",
     sort_order: 5,
   },
   {
     name: "Movies & Specials",
-    name_si: "චිත්‍රපට හා විශේෂ",
+    name_alt: "Feature Length",
     slug: "movies-specials",
-    description: "ටෙලි කථාංගවලට පිටින් පැමිණි සම්පූර්ණ දිග චිත්‍රපට හා විශේෂ නිකුතු.",
+    description: "Full-length films and specials from outside the TV seasons.",
     accent: "#FF2E88",
     sort_order: 6,
   },
@@ -152,7 +342,8 @@ interface SeedRelease {
   category: string;
   code: string;
   title: string;
-  title_en: string;
+  subtitle: string;
+  slug: string;
   season: number;
   episode_number: number | null;
   episode_type: "episode" | "movie" | "special" | "short";
@@ -178,27 +369,28 @@ const ART = {
   movies: "/art/cover-movies.jpg",
 };
 
-const STUDIO = "SL Dubbing Team";
+const STUDIO = "SL Dub Studio";
 
 const seedReleases: SeedRelease[] = [
   /* ---------------------------- Classic ---------------------------- */
   {
     category: "classic",
     code: "B10-CL-001",
-    title: "එතන දහ දෙනෙක් හිටියා",
-    title_en: "And Then There Were 10",
+    title: "And Then There Were 10",
+    subtitle: "Ben 10 Classic · Season 1",
+    slug: "and-then-there-were-10",
     season: 1,
     episode_number: 1,
     episode_type: "episode",
     synopsis:
-      "ගිම්හාන නිවාඩුවට යාමට පෙර බෙන් ටෙනිසන්ට අහසින් වැටුණු අද්භූත ඔම්නිට්‍රික්ස් උපකරණය හමු වේ. එයින් ඔහුට එලියන් දහ දෙනෙකු බවට පත්විය හැකි බව දැනගන්නා ඔහුගේ ජීවිතය සදහටම වෙනස් වේ.",
+      "On the last day of summer camp, a strange device falls out of the sky in front of Ben Tennyson. With ten alien forms suddenly at his fingertips, his life changes forever.",
     thumbnail: ART.classic,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-02-11",
     aired_date: "2005-12-27",
-    tags: "ආරම්භය,ඔම්නිට්‍රික්ස්,බෙන්,ග්වෙන්,කීවින්",
+    tags: "origin,omnitrix,ben,gwen,kevin",
     featured: true,
     views: 48210,
     links: [
@@ -210,20 +402,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "classic",
     code: "B10-CL-002",
-    title: "වොෂිංටන් බී.සී.",
-    title_en: "Washington B.C.",
+    title: "Washington B.C.",
+    subtitle: "Ben 10 Classic · Season 1",
+    slug: "washington-bc",
     season: 1,
     episode_number: 2,
     episode_type: "episode",
     synopsis:
-      "අනාචාරයේ හා බියකරු විද්‍යාඥයෙකු වන ඩොක්ටර් ඇනිමෝ ගල්වලින් ප්‍රාග් ඓතිහාසික සත්තු නැවත ජීවත් කරවා නගරයට නිදහස් කරයි. ඔවුන් නැවතත් මුදා හරින්නට බෙන් ගත් තීරණය ගැන මුළු නගරයම කම්පා වේ.",
+      "Dr. Animo uses a stolen device to bring prehistoric creatures back to life and sets them loose on the city. Ben has to round up a stampede of monsters that should have stayed extinct.",
     thumbnail: ART.classic,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-02-18",
     aired_date: "2006-01-14",
-    tags: "ඇනිමෝ,සත්තු,ඩයිනෝසෝර",
+    tags: "animo,creatures,dinosaurs",
     views: 31240,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/4", size: 738 },
@@ -233,20 +426,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "classic",
     code: "B10-CL-003",
-    title: "ක්‍රැකන්",
-    title_en: "The Krakken",
+    title: "The Krakken",
+    subtitle: "Ben 10 Classic · Season 1",
+    slug: "the-krakken",
     season: 1,
     episode_number: 3,
     episode_type: "episode",
     synopsis:
-      "විලක් අසල නිවාඩුවක් ගත කරන අතරතුර ගැඹුරු ජලයේ සැඟවී සිටින යෝධ ජලජ නිවැසියෙක් ගැන බෙන් හා ග්වෙන් තොරතුරු සොයා යති.",
+      "A quiet lake holiday turns into a mystery when something enormous stirs in the deep water — and a poacher wants to catch it before anyone else does.",
     thumbnail: ART.classic,
     quality: "720p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-02-25",
     aired_date: "2006-01-21",
-    tags: "විල,ජලජ,රිප්ජෝස්",
+    tags: "lake,creature,mystery",
     views: 27655,
     links: [
       { label: "720p", url: "https://t.me/ben10sl/6", size: 402 },
@@ -256,60 +450,63 @@ const seedReleases: SeedRelease[] = [
   {
     category: "classic",
     code: "B10-CL-004",
-    title: "සදාකාලික විශ්‍රාමය",
-    title_en: "Permanent Retirement",
+    title: "Permanent Retirement",
+    subtitle: "Ben 10 Classic · Season 1",
+    slug: "permanent-retirement",
     season: 1,
     episode_number: 4,
     episode_type: "episode",
     synopsis:
-      "මිත්‍රශීලී විශ්‍රාම ශාලාවක් යටතේ සැඟවුණු භයානක සැලසුමක් බෙන් හෙළිදරව් කරයි. ඔහුගේ මුතුන් මිත්තන්ට ද අවදානමක් එල්ල වේ.",
+      "A friendly retirement home is hiding a criminal operation — and Ben's own grandparents are right in the middle of it.",
     thumbnail: ART.classic,
     quality: "720p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-03-03",
     aired_date: "2006-01-28",
-    tags: "විශ්‍රාම,රහස්,ෆිල්",
+    tags: "retirement,heist,family",
     views: 25110,
     links: [{ label: "720p", url: "https://t.me/ben10sl/8", size: 398 }],
   },
   {
     category: "classic",
     code: "B10-CL-005",
-    title: "දඩයම",
-    title_en: "Hunted",
+    title: "Hunted",
+    subtitle: "Ben 10 Classic · Season 1",
+    slug: "hunted",
     season: 1,
     episode_number: 5,
     episode_type: "episode",
     synopsis:
-      "ඔම්නිට්‍රික්ස් සොරාගැනීමට බඳවා ගත් සොරුන් තිදෙනකු බෙන් පසුපස එන අතර, ඔහුගේ රහස රැකගැනීම සඳහා කුමක් කළ යුතුද යන්න තීරණය කිරීමට බෙන්ට සිදුවේ.",
+      "Three bounty hunters are hired to take the Omnitrix from Ben, and none of them is willing to take no for an answer. Ben has to decide how far he will go to keep his secret.",
     thumbnail: ART.classic,
     quality: "720p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-03-10",
     aired_date: "2006-02-04",
-    tags: "සොරු,කීවින්,සටන්",
+    tags: "bounty-hunters,kevin,fight",
     views: 24398,
     links: [{ label: "720p", url: "https://t.me/ben10sl/9", size: 405 }],
   },
   {
     category: "classic",
     code: "B10-CL-006",
-    title: "කෙවින් 11",
-    title_en: "Kevin 11",
+    title: "Kevin 11",
+    subtitle: "Ben 10 Classic · Season 1",
+    slug: "kevin-11",
     season: 1,
-    episode_number: 5,
+    episode_number: 6,
     episode_type: "episode",
     synopsis:
-      "බෙන්ගේ ශක්තිය උරාගත් කෙවින් නැවත පැමිණේ. ඔහුගේ ප්‍රහාරවලට එරෙහිව නගරය බේරා ගැනීමට බෙන් උපරිම උත්සාහයක් ගනී.",
+      "Kevin absorbs the power of the Omnitrix and comes back stronger than ever. Ben has to out-think a villain who fights with copies of his own aliens.",
     thumbnail: ART.classic,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-03-17",
     aired_date: "2006-08-26",
-    tags: "කෙවින්,පළිගැනීම,සටන්",
+    tags: "kevin,revenge,fight",
     views: 39880,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/10", size: 756 },
@@ -321,20 +518,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "alien-force",
     code: "B10-AF-001",
-    title: "බෙන් 10 නැවත පැමිණේ",
-    title_en: "Ben 10 Returns",
+    title: "Ben 10 Returns",
+    subtitle: "Alien Force · Season 1",
+    slug: "ben-10-returns",
     season: 1,
     episode_number: 1,
     episode_type: "episode",
     synopsis:
-      "වසර පහක් ගත වී ඇත. ඔම්නිට්‍රික්ස් නැවත ලබාගත් බෙන්, ග්වෙන් හා කෙවින් සමඟ ලෝකයට එල්ල වන අලුත් තර්ජනයක් වළක්වන්නට එක්වේ.",
+      "Five years have passed. With the Omnitrix back on his wrist, Ben teams up with Gwen and Kevin to stop a new threat that is targeting the whole planet.",
     thumbnail: ART.alienforce,
     quality: "1080p",
     duration_minutes: 44,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-04-07",
     aired_date: "2008-04-18",
-    tags: "නව මාලාව,එලියන් ෆෝස්,නයිට්‍රික්ස්",
+    tags: "new-series,alien-force,highbreed",
     featured: true,
     views: 52310,
     links: [
@@ -346,20 +544,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "alien-force",
     code: "B10-AF-002",
-    title: "කෙවින්ගේ මහා ජයග්‍රහණය",
-    title_en: "Kevin's Big Score",
+    title: "Kevin's Big Score",
+    subtitle: "Alien Force · Season 1",
+    slug: "kevins-big-score",
     season: 1,
     episode_number: 2,
     episode_type: "episode",
     synopsis:
-      "කෙවින් අතීතයේ දී තැබූ වටිනා බැඳුමක් ඔහුගේ පැරණි කොටස්කරුවන් නැවත ඉල්ලා සිටිති. එය බෙන්ගේ කණ්ඩායමට හොඳ පාඩමක් වේ.",
+      "Kevin's old partners in crime come looking for what they are owed, and his past catches up with the whole team.",
     thumbnail: ART.alienforce,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-04-14",
     aired_date: "2008-04-19",
-    tags: "කෙවින්,අතීතය,සටන්",
+    tags: "kevin,backstory,fight",
     views: 28990,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/23", size: 812 },
@@ -369,40 +568,42 @@ const seedReleases: SeedRelease[] = [
   {
     category: "alien-force",
     code: "B10-AF-003",
-    title: "රන් වන සියල්ල",
-    title_en: "All That Glitters",
+    title: "All That Glitters",
+    subtitle: "Alien Force · Season 1",
+    slug: "all-that-glitters",
     season: 1,
     episode_number: 3,
     episode_type: "episode",
     synopsis:
-      "පාසලේ සිසුන් අමුතු ලෙස හැසිරෙන්නට පටන් ගනී. ඒ පිටුපස සිටින්නේ අවිනිශ්චිත බලයක් සොයා යන කෙනෙකි.",
+      "Students at school start behaving strangely, and the trail leads to someone chasing a kind of power they cannot control.",
     thumbnail: ART.alienforce,
     quality: "720p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-04-21",
     aired_date: "2008-04-26",
-    tags: "පාසල,අද්භූත,විමර්ශන",
+    tags: "school,mystery,investigation",
     views: 21450,
     links: [{ label: "720p", url: "https://t.me/ben10sl/25", size: 448 }],
   },
   {
     category: "alien-force",
     code: "B10-AF-004",
-    title: "විල්ගැක්ස්ගේ පළිගැනීම",
-    title_en: "Vengeance of Vilgax",
+    title: "Vengeance of Vilgax",
+    subtitle: "Alien Force · Season 2",
+    slug: "vengeance-of-vilgax",
     season: 2,
     episode_number: 13,
     episode_type: "episode",
     synopsis:
-      "විල්ගැක්ස් නැවත පැමිණ බෙන්ට අභියෝගයක් එල්ල කරයි. ලෝක ආරක්ෂාව ඔට්ටු වන මෙම සටන බෙන්ගේ ජීවිතයේ ලොකුම අභියෝගය බවට පත්වේ.",
+      "Vilgax returns and challenges Ben directly. With the safety of the planet on the line, the fight that follows becomes the biggest test of Ben's life.",
     thumbnail: ART.alienforce,
     quality: "1080p",
     duration_minutes: 44,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-05-05",
     aired_date: "2009-03-27",
-    tags: "විල්ගැක්ස්,සටන්,තරඟය",
+    tags: "vilgax,fight,challenge",
     featured: true,
     views: 44780,
     links: [
@@ -415,20 +616,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "ultimate-alien",
     code: "B10-UA-001",
-    title: "කීර්තිය",
-    title_en: "Fame",
+    title: "Fame",
+    subtitle: "Ultimate Alien · Season 1",
+    slug: "fame",
     season: 1,
     episode_number: 1,
     episode_type: "episode",
     synopsis:
-      "බෙන්ගේ අනන්‍යතාව මුළු ලෝකයම දැනගනී. නව අල්ටිමේට්‍රික්ස් උපකරණය සමඟ ඔහුට නව අභියෝගවලට මුහුණ දීමට සිදුවේ.",
+      "Ben's identity becomes public knowledge. With the new Ultimatrix on his wrist, he faces a whole new set of enemies — and the cameras never stop rolling.",
     thumbnail: ART.ultimate,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-06-02",
     aired_date: "2010-04-23",
-    tags: "අල්ටිමේට්‍රික්ස්,නව මාලාව,කීර්තිය",
+    tags: "ultimatrix,new-series,fame",
     featured: true,
     views: 36720,
     links: [
@@ -439,40 +641,42 @@ const seedReleases: SeedRelease[] = [
   {
     category: "ultimate-alien",
     code: "B10-UA-002",
-    title: "ඔවුන් ජීවත් වන තැනටම පහර දෙන්න",
-    title_en: "Hit 'Em Where They Live",
+    title: "Hit 'Em Where They Live",
+    subtitle: "Ultimate Alien · Season 1",
+    slug: "hit-em-where-they-live",
     season: 1,
     episode_number: 2,
     episode_type: "episode",
     synopsis:
-      "බෙන්ගේ පවුලේ අය අවදානමට ලක්වේ. ඔහුගේ සතුරන් නගරයට කෙලින්ම පහර දෙන්නට පටන් ගනී.",
+      "Ben's family is put in danger when his enemies stop hiding and attack the city head-on.",
     thumbnail: ART.ultimate,
     quality: "720p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-06-09",
     aired_date: "2010-04-30",
-    tags: "පවුල,සටන්,නගරය",
+    tags: "family,fight,home",
     views: 25120,
     links: [{ label: "720p", url: "https://t.me/ben10sl/32", size: 452 }],
   },
   {
     category: "ultimate-alien",
     code: "B10-UA-003",
-    title: "සම්පූර්ණ බලය",
-    title_en: "Absolute Power",
+    title: "Absolute Power",
+    subtitle: "Ultimate Alien · Special",
+    slug: "absolute-power",
     season: 1,
     episode_number: 20,
     episode_type: "special",
     synopsis:
-      "බලය සොයා යන දෙදෙනෙකු එකට එක්වූ විට මුළු පෘථිවියම අවදානමට ලක්වේ. එය නැවැත්වීමට බෙන් හා ග්වෙන් සියල්ල කැපකරති.",
+      "Two power-hungry villains join forces and put the entire planet at risk. Ben and Gwen have to give everything they have to stop them.",
     thumbnail: ART.ultimate,
     quality: "1080p",
     duration_minutes: 46,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-06-30",
     aired_date: "2010-12-10",
-    tags: "විශේෂ,බලය,සටන",
+    tags: "special,power,team-up",
     views: 29980,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/33", size: 1310 },
@@ -484,20 +688,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "omniverse",
     code: "B10-OV-001",
-    title: "වෙනස් වූ දේවල්",
-    title_en: "The More Things Change",
+    title: "The More Things Change",
+    subtitle: "Omniverse · Season 1",
+    slug: "the-more-things-change",
     season: 1,
     episode_number: 1,
     episode_type: "episode",
     synopsis:
-      "බෙන් නැවත බෙල්වුඩ් නගරයට පැමිණෙන අතර, ඔම්නිට්‍රික්ස්හි නව ලෝකයක් හෙළිදරව් වේ.",
+      "Ben heads back to Bellwood with the new Omnitrix, only to find that a whole new universe of trouble has moved in while he was away.",
     thumbnail: ART.omniverse,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-08-04",
     aired_date: "2012-08-01",
-    tags: "නව පෙනුම,ඕම්නිවර්ස්,බෙල්වුඩ්",
+    tags: "new-look,omniverse,bellwood",
     featured: true,
     views: 33890,
     links: [
@@ -508,40 +713,42 @@ const seedReleases: SeedRelease[] = [
   {
     category: "omniverse",
     code: "B10-OV-002",
-    title: "කොහෙන්දෝ ආ විදුලිය",
-    title_en: "A Jolt from Nowhere",
+    title: "A Jolt from Nowhere",
+    subtitle: "Omniverse · Season 1",
+    slug: "a-jolt-from-nowhere",
     season: 1,
     episode_number: 2,
     episode_type: "episode",
     synopsis:
-      "අමුතු අධි-වෝල්ටීයතා බලයක් නගරයේ ඇතිවන අතර එය පිටුපස සිටින එලියන් තරුණයා බෙන්ට හමුවේ.",
+      "Strange high-voltage surges hit the city, and the young alien responsible wants to meet Ben face to face.",
     thumbnail: ART.omniverse,
     quality: "720p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-08-11",
     aired_date: "2012-08-02",
-    tags: "ෆීඩ්බැක්,විදුලිය,එලියන්",
+    tags: "feedback,electricity,alien",
     views: 22140,
     links: [{ label: "720p", url: "https://t.me/ben10sl/42", size: 438 }],
   },
   {
     category: "omniverse",
     code: "B10-OV-003",
-    title: "ගබඩාව 23",
-    title_en: "Store 23",
+    title: "Store 23",
+    subtitle: "Omniverse · Season 3",
+    slug: "store-23",
     season: 3,
     episode_number: 6,
     episode_type: "episode",
     synopsis:
-      "අමුතු සාප්පුවක් තුළ සැඟවුණු වෙනත් මානයකට බෙන් හා රූක් ඇතුළු වේ. එහිදී ඔවුන්ට වෙනස් ලෝකයක් හමුවේ.",
+      "A routine shopping trip turns into a trip between dimensions when Ben and Rook step through the wrong door.",
     thumbnail: ART.omniverse,
     quality: "1080p",
     duration_minutes: 22,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-08-25",
     aired_date: "2013-03-16",
-    tags: "මාන,රූක්,වික්‍රම",
+    tags: "dimensions,rook,adventure",
     views: 24560,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/43", size: 790 },
@@ -553,20 +760,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "reboot",
     code: "B10-RB-001",
-    title: "නැවත ආරම්භය — පළමු කථාංගය",
-    title_en: "Reboot — Episode 1",
+    title: "Waterfilter",
+    subtitle: "Reboot · Season 1",
+    slug: "waterfilter",
     season: 1,
     episode_number: 1,
     episode_type: "episode",
     synopsis:
-      "නවීන නිර්මාණයේ බෙන් ටෙනිසන් නව එලියන්ස් සමඟ නව වික්‍රමාන්විත ලෝකයකට අවතීර්ණ වේ.",
+      "The 2016 reboot kicks off as Ben discovers his alien forms all over again, with a brand-new cast of characters along for the ride.",
     thumbnail: ART.reboot,
     quality: "1080p",
     duration_minutes: 12,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-09-15",
     aired_date: "2016-10-01",
-    tags: "රීබූට්,නව මාලාව,පළමු කථාංගය",
+    tags: "reboot,new-series,premiere",
     views: 18760,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/50", size: 386 },
@@ -578,20 +786,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "movies-specials",
     code: "B10-MV-001",
-    title: "ඔම්නිට්‍රික්ස්හි රහස",
-    title_en: "Secret of the Omnitrix",
+    title: "Secret of the Omnitrix",
+    subtitle: "Feature Film",
+    slug: "secret-of-the-omnitrix",
     season: 0,
     episode_number: null,
     episode_type: "movie",
     synopsis:
-      "ඔම්නිට්‍රික්ස් විනාශ වීමට ලක්වූ විට බෙන්ට තමන්ගේ එලියන් බලය නැතිවී යාමේ අවදානමට මුහුණ දෙන්නට සිදුවේ. ඔහු උපකරණයේ නිර්මාපකයා සොයා ගැනීමට යයි.",
+      "With the Omnitrix set to self-destruct, Ben loses access to his aliens and goes searching for the device's creator.",
     thumbnail: ART.movies,
     quality: "1080p",
     duration_minutes: 75,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-10-05",
     aired_date: "2007-08-10",
-    tags: "චිත්‍රපටය,ඔම්නිට්‍රික්ස්,රහස",
+    tags: "movie,omnitrix,origin",
     featured: true,
     views: 61240,
     links: [
@@ -603,20 +812,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "movies-specials",
     code: "B10-MV-002",
-    title: "කාලය සමඟ තරඟය",
-    title_en: "Race Against Time",
+    title: "Race Against Time",
+    subtitle: "Feature Film",
+    slug: "race-against-time",
     season: 0,
     episode_number: null,
     episode_type: "movie",
     synopsis:
-      "කාලය විකෘති කරන නපුරු බලවේගයක් නැවැත්වීමට බෙන්ට කාලය හා ඉරියව්ව පරයා යාමට සිදුවේ.",
+      "A twisted force is rewriting time itself, and Ben has to race across the clock to stop it before everything he knows is erased.",
     thumbnail: ART.movies,
     quality: "1080p",
     duration_minutes: 90,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-10-19",
     aired_date: "2007-11-21",
-    tags: "චිත්‍රපටය,කාලය,සටන",
+    tags: "movie,time,traveller",
     views: 38990,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/63", size: 2420 },
@@ -626,20 +836,21 @@ const seedReleases: SeedRelease[] = [
   {
     category: "movies-specials",
     code: "B10-MV-003",
-    title: "එලියන් ස්වාම්",
-    title_en: "Alien Swarm",
+    title: "Alien Swarm",
+    subtitle: "Feature Film",
+    slug: "alien-swarm",
     season: 0,
     episode_number: null,
     episode_type: "movie",
     synopsis:
-      "අහසින් වැටෙන අමුතු එලියන් බීජ නගරය තුළ ව්‍යාප්ත වන විට බෙන් හා ඔහුගේ කණ්ඩායම ඒවා නැවැත්වීමට එක්වේ.",
+      "Alien eggs fall from the sky and spread across the city. Ben and his team have to move fast to stop the swarm before it takes over.",
     thumbnail: ART.movies,
     quality: "1080p",
     duration_minutes: 70,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-11-02",
     aired_date: "2009-11-25",
-    tags: "චිත්‍රපටය,එලියන්,ස්වාම්",
+    tags: "movie,swarm,aliens",
     views: 31550,
     links: [
       { label: "1080p", url: "https://t.me/ben10sl/65", size: 2040 },
@@ -649,40 +860,42 @@ const seedReleases: SeedRelease[] = [
   {
     category: "movies-specials",
     code: "B10-MV-004",
-    title: "සියලුම එලියන්ස් විනාශ කරන්න",
-    title_en: "Destroy All Aliens",
+    title: "Destroy All Aliens",
+    subtitle: "Feature Film",
+    slug: "destroy-all-aliens",
     season: 0,
     episode_number: null,
     episode_type: "movie",
     synopsis:
-      "බෙන්ගේ ප්‍රති-එලියන් අවි නැවත පණ ගැන්වෙන විට, ලෝකයේ සියලු එලියන්ස්ව බේරා ගැනීමට බෙන්ට තමන්ටම එරෙහිව සටන් කිරීමට සිදුවේ.",
+      "Anti-alien weapons come back to life, and Ben has to fight his own powers to save every alien on Earth.",
     thumbnail: ART.movies,
     quality: "1080p",
     duration_minutes: 68,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-11-16",
     aired_date: "2012-03-23",
-    tags: "චිත්‍රපටය,එලියන්,සටන",
+    tags: "movie,aliens,fight",
     views: 27330,
     links: [{ label: "1080p", url: "https://t.me/ben10sl/67", size: 1980 }],
   },
   {
     category: "movies-specials",
     code: "B10-MV-005",
-    title: "බෙන් 10 එදිරිව විශ්වය",
-    title_en: "Ben 10 vs. The Universe",
+    title: "Ben 10 vs. The Universe",
+    subtitle: "Feature Film",
+    slug: "ben-10-vs-the-universe",
     season: 0,
     episode_number: null,
     episode_type: "movie",
     synopsis:
-      "විශ්වයේ ඉරණම තීරණය වන මහා සටනක්. බෙන් සිය සියලුම එලියන් බලය භාවිතා කරමින් ලෝකය බේරා ගැනීමට උත්සාහ කරයි.",
+      "The fate of the universe is decided in one massive battle, as Ben pushes every single alien form to its limit.",
     thumbnail: ART.movies,
     quality: "1080p",
     duration_minutes: 72,
     dubbed_studio: STUDIO,
     dubbed_date: "2024-12-07",
     aired_date: "2020-10-11",
-    tags: "චිත්‍රපටය,විශ්වය,සමාප්තිය",
+    tags: "movie,universe,finale",
     featured: true,
     views: 42110,
     links: [
@@ -694,101 +907,141 @@ const seedReleases: SeedRelease[] = [
 
 const SETTINGS_SEED: Record<string, string> = {
   site_name: "Ben 10 SL",
-  site_tagline: "සිංහල හඬකැවීම",
+  site_tagline: "Sinhala Dubbed Episodes",
   site_description:
-    "Ben 10 සම්පූර්ණ කථාංග මාලාව සහ චිත්‍රපට — සම්පූර්ණයෙන්ම සිංහල හඬකැවීමෙන්. නොමිලේ නරඹන්න, බාගන්න.",
-  // the fan-page logo (hosted url or /uploads/... after using the admin uploader)
+    "Every Ben 10 episode and movie, fully dubbed in Sinhala. Free to stream and download, organised by series.",
   logo_url: "https://i.ibb.co/99p93Zfc/file-66.jpg",
   logo_text: "Ben 10 SL",
-  announcement: "🎬 සතියේ නවතම සිංහල කථාංගය — බෙන් 10 සියලුම චිත්‍රපට දැන් නැරඹිය හැකියි!",
-  hero_kicker: "සිංහල හඬකැවීම",
-  hero_title: "ඔම්නිට්‍රික්ස් ඔබේ අතේ",
+  announcement: "🎬 New this week — every Ben 10 movie is now streaming with Sinhala audio!",
+  hero_kicker: "100% Sinhala Dub",
+  hero_title: "Every Ben 10 Series in Sinhala",
   hero_subtitle:
-    "Ben 10 ක්ලැසික් සිට ඕම්නිවර්ස් දක්වා සියලුම කථාංග සහ චිත්‍රපට — සිංහලෙන් සම්පූර්ණයෙන්ම හඬකැවූ.",
+    "From Classic to Omniverse — every episode and movie, fully dubbed in Sinhala and free to watch.",
   hero_image: "/art/hero-alien-tech.jpg",
   // paste a Sinhala dubbed YouTube link from the admin panel to fill the home-page player
   featured_youtube: "",
   telegram_url: "https://t.me/ben10sl",
   telegram_requests: "https://t.me/ben10sl",
   contact_email: "hello@ben10sl.lk",
-  footer_note: "මෙය රසිකයන් විසින් නිර්මිත අනධිකාරී රසික පිටුවකි.",
+  footer_note: "a non-official fan page run by fans, for fans.",
   disclaimer:
-    "අපගේ වෙබ් අඩවියේ කිසිදු වීඩියෝ ගොනුවක් ගබඩා නොකෙරේ. සියලුම වීඩියෝ පිටත සේවාදායක හෝ ටෙලිග්‍රෑම් නාලිකා හරහා සම්බන්ධ වේ. සියලුම අයිතිවාසිකම් Cartoon Network සහ අදාළ හිමිකරුවන් සතුය.",
+    "No video files are stored on this website. Every link points to an external service or a Telegram channel. All characters and series titles belong to Cartoon Network and the respective rights holders.",
   telegram_members: "12,400",
-  releases_label: "නිකුතු",
+  releases_label: "releases",
   site_online_since: "2023-01-15",
 };
 
-function seed(db: DB) {
-  const insertSetting = db.prepare(
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
-  );
+/**
+ * Explicit ids keep the seed deterministic (the same ids in every database) and
+ * let the demo archive be inserted as one transaction without any round trip to
+ * read generated keys back. `ON CONFLICT DO NOTHING` makes it re-runnable, so two
+ * cold starts racing on an empty database cannot fail each other.
+ */
+function seedStatements(): Statement[] {
+  const statements: Statement[] = [];
 
-  const categoryCount = db.prepare("SELECT COUNT(*) AS c FROM categories").get() as { c: number };
-  if (categoryCount.c === 0) {
-    const insertCategory = db.prepare(
-      `INSERT INTO categories (name, name_si, slug, description, accent, sort_order)
-       VALUES (@name, @name_si, @slug, @description, @accent, @sort_order)`,
-    );
-    const insertRelease = db.prepare(
-      `INSERT INTO releases (
-         category_id, code, title, title_en, slug, season, episode_number, episode_type,
-         synopsis, thumbnail, quality, duration_minutes, dubbed_studio, dubbed_date,
-         aired_date, telegram_url, source, language, tags, views, featured, status
-       ) VALUES (
-         @category_id, @code, @title, @title_en, @slug, @season, @episode_number, @episode_type,
-         @synopsis, @thumbnail, @quality, @duration_minutes, @dubbed_studio, @dubbed_date,
-         @aired_date, @telegram_url, @source, 'sinhala', @tags, @views, @featured, 'published'
-       )`,
-    );
-    const insertQuality = db.prepare(
-      "INSERT INTO qualities (release_id, label, url, file_size_mb, position) VALUES (?, ?, ?, ?, ?)",
-    );
+  CATEGORY_SEED.forEach((category, index) => {
+    statements.push({
+      text: `INSERT INTO categories (id, name, name_alt, slug, description, accent, sort_order)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT DO NOTHING`,
+      params: [
+        index + 1,
+        category.name,
+        category.name_alt,
+        category.slug,
+        category.description,
+        category.accent,
+        category.sort_order,
+      ],
+    });
+  });
 
-    const seedAll = db.transaction(() => {
-      const categoryIds = new Map<string, number>();
-      for (const category of CATEGORY_SEED) {
-        const info = insertCategory.run(category);
-        categoryIds.set(category.slug, Number(info.lastInsertRowid));
-      }
-
-      for (const release of seedReleases) {
-        const info = insertRelease.run({
-          category_id: categoryIds.get(release.category) ?? 1,
-          code: release.code,
-          title: release.title,
-          title_en: release.title_en,
-          slug: release.code.toLowerCase(),
-          season: release.season,
-          episode_number: release.episode_number,
-          episode_type: release.episode_type,
-          synopsis: release.synopsis,
-          thumbnail: release.thumbnail,
-          quality: release.quality,
-          duration_minutes: release.duration_minutes,
-          dubbed_studio: release.dubbed_studio,
-          dubbed_date: release.dubbed_date,
-          aired_date: release.aired_date,
-          telegram_url: "https://t.me/ben10sl",
-          source: "Cartoon Network (සිංහල හඬකැවීම)",
-          tags: release.tags,
-          views: release.views,
-          featured: release.featured ? 1 : 0,
-        });
-        const releaseId = Number(info.lastInsertRowid);
-        release.links.forEach((link, index) => {
-          insertQuality.run(releaseId, link.label, link.url, link.size, index);
-        });
-      }
+  let releaseId = 0;
+  let qualityId = 0;
+  for (const release of seedReleases) {
+    releaseId += 1;
+    statements.push({
+      text: `INSERT INTO releases (
+               id, category_id, code, title, subtitle, slug, season, episode_number,
+               episode_type, synopsis, thumbnail, quality, duration_minutes, dubbed_studio,
+               dubbed_date, aired_date, telegram_url, source, language, tags, views,
+               featured, status
+             ) VALUES (
+               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+               $15, $16, $17, $18, 'sinhala', $19, $20, $21, 'published'
+             )
+             ON CONFLICT DO NOTHING`,
+      params: [
+        releaseId,
+        categoryIdFor(release.category),
+        release.code,
+        release.title,
+        release.subtitle,
+        release.slug,
+        release.season,
+        release.episode_number,
+        release.episode_type,
+        release.synopsis,
+        release.thumbnail,
+        release.quality,
+        release.duration_minutes,
+        release.dubbed_studio,
+        release.dubbed_date,
+        release.aired_date,
+        "https://t.me/ben10sl",
+        "Cartoon Network (Sinhala dub)",
+        release.tags,
+        release.views,
+        release.featured ? 1 : 0,
+      ],
     });
 
-    seedAll();
+    release.links.forEach((link, index) => {
+      qualityId += 1;
+      statements.push({
+        text: `INSERT INTO qualities (id, release_id, label, url, file_size_mb, position)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               ON CONFLICT DO NOTHING`,
+        params: [qualityId, releaseId, link.label, link.url, link.size, index],
+      });
+    });
   }
 
-  const settingsSeed = db.transaction(() => {
-    for (const [key, value] of Object.entries(SETTINGS_SEED)) {
-      insertSetting.run(key, value);
-    }
-  });
-  settingsSeed();
+  // move the identity sequences past the seeded ids so admin-created rows continue cleanly
+  for (const table of ["categories", "releases", "qualities"]) {
+    statements.push({
+      text: `SELECT setval(
+               pg_get_serial_sequence('${table}', 'id'),
+               (SELECT COALESCE(MAX(id), 1) FROM ${table}),
+               true
+             )`,
+    });
+  }
+
+  return statements;
+}
+
+function categoryIdFor(slug: string): number {
+  const index = CATEGORY_SEED.findIndex((category) => category.slug === slug);
+  return index >= 0 ? index + 1 : 1;
+}
+
+const SETTINGS_SEED_STATEMENTS: Statement[] = Object.entries(SETTINGS_SEED).map(([key, value]) => ({
+  text: `INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING`,
+  params: [key, value],
+}));
+
+/** Creates the schema (idempotent) and seeds the archive when it is empty. */
+async function ensureDatabase(driver: Driver): Promise<void> {
+  console.log(
+    `[Ben 10 SL] database ready (${driver.label}${driver.label === "pglite" ? " — local development fallback" : ""})`,
+  );
+
+  await driver.transaction([...SCHEMA, ...SETTINGS_SEED_STATEMENTS]);
+
+  const [row] = await driver.query<{ c: number }>("SELECT COUNT(*)::int AS c FROM categories", []);
+  if ((row?.c ?? 0) === 0) {
+    await driver.transaction(seedStatements());
+  }
 }

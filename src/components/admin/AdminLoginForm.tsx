@@ -26,7 +26,7 @@ export default function AdminLoginForm() {
           htmlFor="username"
           className="mb-2 block text-[0.68rem] font-black tracking-[0.24em] text-void-200 uppercase"
         >
-          පරිශීලක නාමය
+          Username
         </label>
         <input
           id="username"
@@ -43,7 +43,7 @@ export default function AdminLoginForm() {
           htmlFor="password"
           className="mb-2 block text-[0.68rem] font-black tracking-[0.24em] text-void-200 uppercase"
         >
-          මුරපදය
+          Password
         </label>
         <input
           id="password"
@@ -73,7 +73,7 @@ export default function AdminLoginForm() {
         className="flex w-full items-center justify-center gap-3 rounded-xl bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-6 py-3.5 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni transition-transform hover:scale-[1.01] disabled:opacity-70"
       >
         <OmnitrixMark size={18} className="text-void-950" />
-        {pending ? "පිවිසෙමින්…" : "පිවිසෙන්න"}
+        {pending ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

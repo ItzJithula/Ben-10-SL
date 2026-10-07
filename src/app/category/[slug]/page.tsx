@@ -17,10 +17,10 @@ function first(value: string | string[] | undefined) {
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const category = getCategoryBySlug(slug);
-  if (!category) return { title: "මාලාව හමු නොවිණි" };
+  const category = await getCategoryBySlug(slug);
+  if (!category) return { title: "Collection not found" };
   return {
-    title: `${category.name} — සිංහල හඬකැවීම`,
+    title: `${category.name} — Sinhala Dub`,
     description: category.description,
   };
 }
@@ -34,13 +34,13 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const query = await searchParams;
-  const category = getCategoryBySlug(slug);
+  const category = await getCategoryBySlug(slug);
   if (!category) notFound();
 
-  const categories = listCategories();
+  const categories = await listCategories();
   const page = Number.parseInt(first(query.page) ?? "1", 10) || 1;
 
-  const result = listReleases({
+  const result = await listReleases({
     category: slug,
     type: first(query.type),
     q: first(query.q),
@@ -72,11 +72,11 @@ export default async function CategoryPage({
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <nav className="mb-6 flex items-center gap-2 text-[0.7rem] font-bold tracking-wider text-void-200 uppercase">
             <Link href="/" className="hover:text-omni-300">
-              මුල් පිටුව
+              Home
             </Link>
             <span className="text-void-400">/</span>
             <Link href="/releases" className="hover:text-omni-300">
-              නිකුතු
+              Releases
             </Link>
             <span className="text-void-400">/</span>
             <span style={{ color: category.accent }}>{category.name}</span>
@@ -87,10 +87,10 @@ export default async function CategoryPage({
               className="mb-3 text-[0.66rem] font-black tracking-[0.34em] uppercase"
               style={{ color: category.accent }}
             >
-              Ben 10 මාලාව · {category.release_count} නිකුතු
+              Ben 10 series · {category.release_count} releases
             </p>
             <h1 className="font-display text-3xl font-black text-white sm:text-5xl">
-              {category.name_si || category.name}
+              {category.name}
             </h1>
             <p className="mt-3 text-sm font-bold tracking-[0.24em] text-void-200 uppercase">
               {category.name}
@@ -111,7 +111,7 @@ export default async function CategoryPage({
                   className="rounded-full border px-4 py-1.5 text-xs font-bold transition-colors hover:text-white"
                   style={{ borderColor: `${item.accent}55`, color: item.accent }}
                 >
-                  {item.name_si || item.name}
+                  {item.name_alt || item.name}
                 </Link>
               ))}
           </div>
@@ -133,9 +133,9 @@ export default async function CategoryPage({
 
         {result.items.length === 0 ? (
           <div className="panel mt-8 p-12 text-center">
-            <p className="font-display text-lg font-black text-white">මෙම මාලාවේ නිකුතු තවම නැත</p>
+            <p className="font-display text-lg font-black text-white">No releases in this collection yet</p>
             <p className="mt-2 text-sm text-void-100">
-              ඉක්මනින්ම නව කථාංග එක් කෙරේ. ටෙලිග්‍රෑම් නාලිකාව හා සම්බන්ධ වන්න.
+              New episodes are added all the time — follow our Telegram channel to catch them.
             </p>
           </div>
         ) : null}

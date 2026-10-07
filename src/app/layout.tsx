@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = getSettings();
+  const settings = await getSettings();
   return {
     metadataBase: new URL(process.env.SITE_URL ?? "http://localhost:3000"),
     title: {
@@ -30,10 +30,10 @@ export async function generateMetadata(): Promise<Metadata> {
     description: settings.site_description,
     keywords: [
       "Ben 10 Sinhala",
-      "බෙන් 10 සිංහල",
       "Ben 10 Sinhala dubbed",
+      "Ben 10 Sinhala dub download",
       "Ben 10 SL",
-      "සිංහල හඬකැවීම",
+      "Sinhala dubbed cartoons",
     ],
     icons: { icon: "/logo.svg" },
     openGraph: {
@@ -45,12 +45,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = getSettings();
-  const categories = listCategories();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const [settings, categories] = await Promise.all([getSettings(), listCategories()]);
 
   return (
-    <html lang="si" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-dvh antialiased">
         <SmoothScroll>
           <SiteHeader settings={settings} categories={categories} />

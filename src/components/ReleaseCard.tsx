@@ -3,10 +3,10 @@ import type { ReleaseWithMeta } from "@/lib/types";
 import { episodeLabel, formatViews } from "@/lib/utils";
 
 const TYPE_LABEL: Record<string, string> = {
-  episode: "කථාංගය",
-  movie: "චිත්‍රපටය",
-  special: "විශේෂ",
-  short: "කෙටි",
+  episode: "Episode",
+  movie: "Movie",
+  special: "Special",
+  short: "Short",
 };
 
 export default function ReleaseCard({
@@ -59,7 +59,7 @@ export default function ReleaseCard({
         {/* language badge — everything here is Sinhala dubbed */}
         <span className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-omni-400/90 px-2.5 py-1 text-[0.62rem] font-black tracking-wider text-void-950 uppercase">
           <span className="h-1.5 w-1.5 rounded-full bg-void-950" />
-          සිංහල හඬකැවීම
+          Sinhala Dub
         </span>
 
         {/* play overlay */}
@@ -78,8 +78,8 @@ export default function ReleaseCard({
           {release.title}
         </h3>
 
-        {!compact && release.title_en ? (
-          <p className="line-clamp-1 text-xs tracking-wide text-void-200">{release.title_en}</p>
+        {!compact && release.subtitle ? (
+          <p className="line-clamp-1 text-xs tracking-wide text-void-200">{release.subtitle}</p>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[0.7rem] font-semibold tracking-wide text-void-200 uppercase">
@@ -99,7 +99,7 @@ export default function ReleaseCard({
               <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current opacity-70">
                 <path d="M10.6 13.4a1 1 0 0 0 1.4 0l3-3a3 3 0 0 0-4.2-4.2l-1 1 1.4 1.4 1-1a1 1 0 0 1 1.4 1.4l-3 3a1 1 0 0 0 0 1.4Zm2.8-2.8a1 1 0 0 0-1.4 0l-3 3a3 3 0 0 0 4.2 4.2l1-1-1.4-1.4-1 1a1 1 0 0 1-1.4-1.4l3-3a1 1 0 0 0 0-1.4Z" />
               </svg>
-              {release.link_count} බාගැනීම්
+              {release.link_count} links
             </span>
           ) : null}
           {release.featured === 1 ? (
@@ -107,7 +107,7 @@ export default function ReleaseCard({
               <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current">
                 <path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z" />
               </svg>
-              විශේෂ
+              Featured
             </span>
           ) : null}
         </div>

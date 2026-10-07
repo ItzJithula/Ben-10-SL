@@ -10,10 +10,10 @@ import {
   toggleReleaseStatusAction,
 } from "@/lib/actions";
 import { listCategories, listReleases } from "@/lib/queries";
-import { formatDateSi, formatViews } from "@/lib/utils";
+import { formatDateLong, formatViews } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "නිකුතු කළමනාකරණය",
+  title: "Manage releases",
   robots: { index: false, follow: false },
 };
 
@@ -25,10 +25,10 @@ function first(value: string | string[] | undefined) {
 
 export default async function AdminReleasesPage({ searchParams }: { searchParams: SearchParams }) {
   const query = await searchParams;
-  const categories = listCategories();
+  const categories = await listCategories();
   const page = Number.parseInt(first(query.page) ?? "1", 10) || 1;
 
-  const result = listReleases({
+  const result = await listReleases({
     q: first(query.q),
     category: first(query.category),
     status: first(query.status),
@@ -53,28 +53,28 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
       <Reveal>
         <div className="panel flex flex-wrap items-center justify-between gap-4 p-6">
           <div>
-            <h1 className="font-display text-xl font-black text-white">නිකුතු කළමනාකරණය</h1>
+            <h1 className="font-display text-xl font-black text-white">Manage releases</h1>
             <p className="mt-1 text-sm text-void-100">
-              මුළු නිකුතු {result.total}ක් · පිටුව {result.page}/{result.pages}
+              {result.total} releases · page {result.page}/{result.pages}
             </p>
           </div>
           <Link
             href="/admin/releases/new"
             className="rounded-full bg-linear-to-r from-omni-300 via-omni-400 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-[0.2em] text-void-950 uppercase shadow-omni transition-transform hover:scale-[1.03]"
           >
-            + නව නිකුතුවක්
+            + New release
           </Link>
         </div>
       </Reveal>
 
       {query.saved ? (
         <p className="rounded-xl border border-omni-400/40 bg-omni-400/10 px-4 py-3 text-xs font-bold text-omni-200">
-          නිකුතුව සාර්ථකව සුරකින ලදි.
+          Release saved successfully.
         </p>
       ) : null}
       {query.deleted ? (
         <p className="rounded-xl border border-alien-amber/40 bg-alien-amber/10 px-4 py-3 text-xs font-bold text-alien-amber">
-          නිකුතුව ඉවත් කරන ලදි.
+          Release deleted.
         </p>
       ) : null}
 
@@ -85,14 +85,14 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
             <input
               name="q"
               defaultValue={first(query.q) ?? ""}
-              placeholder="නම, කේතය හෝ ටැගය සොයන්න…"
+              placeholder="Search by title, code or tag…"
               className="w-full rounded-xl border border-void-500 bg-void-950/80 px-4 py-2.5 text-sm text-white outline-none focus:border-omni-400/70"
             />
             <button
               type="submit"
               className="rounded-xl border border-omni-400/40 px-6 py-2.5 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/10"
             >
-              පෙරහන් කරන්න
+              Apply filters
             </button>
           </div>
 
@@ -102,10 +102,10 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
               defaultValue={first(query.category) ?? "all"}
               className="rounded-xl border border-void-500 bg-void-950/80 px-4 py-2.5 text-sm text-white outline-none focus:border-omni-400/70"
             >
-              <option value="all">සියලු මාලාවන්</option>
+              <option value="all">All collections</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.slug}>
-                  {category.name_si || category.name}
+                  {category.name_alt || category.name}
                 </option>
               ))}
             </select>
@@ -115,9 +115,9 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
               defaultValue={first(query.status) ?? "all"}
               className="rounded-xl border border-void-500 bg-void-950/80 px-4 py-2.5 text-sm text-white outline-none focus:border-omni-400/70"
             >
-              <option value="all">සියලු තත්ත්ව</option>
-              <option value="published">ප්‍රකාශිත</option>
-              <option value="draft">කෙටුම්පත්</option>
+              <option value="all">All statuses</option>
+              <option value="published">Published</option>
+              <option value="draft">Drafts</option>
             </select>
 
             <select
@@ -125,11 +125,11 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
               defaultValue={first(query.type) ?? "all"}
               className="rounded-xl border border-void-500 bg-void-950/80 px-4 py-2.5 text-sm text-white outline-none focus:border-omni-400/70"
             >
-              <option value="all">සියලු වර්ග</option>
-              <option value="episode">කථාංග</option>
-              <option value="movie">චිත්‍රපට</option>
-              <option value="special">විශේෂ</option>
-              <option value="short">කෙටි</option>
+              <option value="all">All types</option>
+              <option value="episode">Episodes</option>
+              <option value="movie">Movies</option>
+              <option value="special">Specials</option>
+              <option value="short">Shorts</option>
             </select>
           </div>
         </form>
@@ -141,12 +141,12 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
           <table className="w-full min-w-[860px] text-left text-sm">
             <thead className="border-b border-void-600 bg-void-950/60 text-[0.62rem] font-black tracking-[0.2em] text-void-200 uppercase">
               <tr>
-                <th className="px-4 py-3">නිකුතුව</th>
-                <th className="px-4 py-3">මාලාව</th>
-                <th className="px-4 py-3">වර්ගය</th>
-                <th className="px-4 py-3">තත්ත්වය</th>
-                <th className="px-4 py-3">නැරඹුම්</th>
-                <th className="px-4 py-3 text-right">ක්‍රියා</th>
+                <th className="px-4 py-3">Release</th>
+                <th className="px-4 py-3">Collection</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Views</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -175,7 +175,7 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
                           {release.title}
                         </Link>
                         <span className="mt-0.5 block text-[0.66rem] text-void-300">
-                          {release.code} · {release.quality} · {formatDateSi(release.created_at)}
+                          {release.code} · {release.quality} · {formatDateLong(release.created_at)}
                         </span>
                       </span>
                     </div>
@@ -194,12 +194,12 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
                   </td>
                   <td className="px-4 py-3 text-xs text-void-100">
                     {release.episode_type === "episode"
-                      ? `වාරය ${release.season} · කථාංගය ${release.episode_number ?? "-"}`
+                      ? `Season ${release.season} · Episode ${release.episode_number ?? "-"}`
                       : release.episode_type === "movie"
-                        ? "චිත්‍රපටය"
+                        ? "Movie"
                         : release.episode_type === "special"
-                          ? "විශේෂ"
-                          : "කෙටි"}
+                          ? "Special"
+                          : "Short"}
                   </td>
                   <td className="px-4 py-3">
                     <form action={toggleReleaseStatusAction}>
@@ -212,7 +212,7 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
                             : "rounded-full border border-alien-amber/45 bg-alien-amber/10 px-3 py-1 text-[0.62rem] font-black tracking-wider text-alien-amber uppercase"
                         }
                       >
-                        {release.status === "published" ? "ප්‍රකාශිත" : "කෙටුම්පත"}
+                        {release.status === "published" ? "Published" : "Draft"}
                       </button>
                     </form>
                   </td>
@@ -225,7 +225,7 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
                         <input type="hidden" name="id" value={release.id} />
                         <button
                           type="submit"
-                          title="විශේෂ ලෙස සලකුණු කරන්න"
+                          title="Toggle featured"
                           className={
                             release.featured === 1
                               ? "rounded-lg border border-omni-400/60 bg-omni-400/15 px-3 py-1.5 text-xs font-bold text-omni-300"
@@ -240,23 +240,23 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
                         href={`/admin/releases/${release.id}`}
                         className="rounded-lg border border-void-500 px-3 py-1.5 text-xs font-bold text-void-100 transition-colors hover:border-omni-400/60 hover:text-omni-300"
                       >
-                        සංස්කරණය
+                        Edit
                       </Link>
 
                       <Link
                         href={`/release/${release.slug}`}
                         className="rounded-lg border border-void-500 px-3 py-1.5 text-xs font-bold text-void-100 transition-colors hover:border-omni-400/60 hover:text-omni-300"
                       >
-                        බලන්න
+                        View
                       </Link>
 
                       <form action={deleteReleaseAction}>
                         <input type="hidden" name="id" value={release.id} />
                         <ConfirmSubmit
                           className="border-alien-red/40 text-alien-red hover:bg-alien-red/10"
-                          message={`“${release.title}” ඉවත් කරන්නද? මෙය ආපසු හැරවිය නොහැක.`}
+                          message={`Delete “${release.title}”? This cannot be undone.`}
                         >
-                          ඉවත් කරන්න
+                          Delete
                         </ConfirmSubmit>
                       </form>
                     </div>
@@ -269,7 +269,7 @@ export default async function AdminReleasesPage({ searchParams }: { searchParams
 
         {result.items.length === 0 ? (
           <p className="p-12 text-center text-sm text-void-200">
-            පෙරහන්වලට ගැළපෙන නිකුතු නොමැත.
+            No releases match these filters.
           </p>
         ) : null}
       </div>

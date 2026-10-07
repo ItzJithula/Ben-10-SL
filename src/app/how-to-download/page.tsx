@@ -7,39 +7,40 @@ import TelegramCta from "@/components/TelegramCta";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
-  title: "උදව් — බාගැනීමේ උපදෙස්",
-  description: "සිංහල හඬකැවූ Ben 10 කථාංග නරඹන හා බාගන්නා ආකාරය පිළිබඳ පියවරෙන් පියවර උපදෙස්.",
+  title: "Help — How to watch & download",
+  description:
+    "Step-by-step guide to watching and downloading Ben 10 episodes with Sinhala audio from Ben 10 SL.",
 };
 
 const STEPS = [
   {
-    title: "මාලාව තෝරන්න",
-    text: "ඉහළ මෙනුවේ “මාලාවන්” වෙතින් ක්ලැසික්, එලියන් ෆෝස්, අල්ටිමේට් එලියන්, ඕම්නිවර්ස්, රීබූට් හෝ චිත්‍රපට එකතුවට යන්න.",
+    title: "Pick a collection",
+    text: "Open “Collections” in the top menu and choose Classic, Alien Force, Ultimate Alien, Omniverse, Reboot or Movies & Specials.",
   },
   {
-    title: "නිකුතුව විවෘත කරන්න",
-    text: "කථාංග ලැයිස්තුවෙන් අවශ්‍ය කථාංගය මත ක්ලික් කරන්න. පිටුවේ කථා සාරාංශය, හඬකැවීමේ තොරතුරු සහ බාගැනීමේ සබැඳි පෙන්වයි.",
+    title: "Open a release",
+    text: "Click an episode in the list. The release page shows the synopsis, dub details and every download link that is available.",
   },
   {
-    title: "ගුණත්වය තෝරන්න",
-    text: "480p (දත්ත අඩු), 720p හෝ 1080p (දත්ත වැඩි) සබැඳි අතරින් ඔබට ගැළපෙන එක තෝරන්න. සෑම සබැඳියකම ගොනු ප්‍රමාණය ද සටහන් කර ඇත.",
+    title: "Choose a quality",
+    text: "Pick 480p for smaller files, 720p for a balance, or 1080p for the sharpest picture. The file size is listed next to each link.",
   },
   {
-    title: "නරඹන්න හෝ බාගන්න",
-    text: "සබැඳිය ටෙලිග්‍රෑම් වෙත යොමු කරයි. එහිදී ධාරාව (stream) කළ හැක, නැතහොත් බාගත කර ගත හැක. ටෙලිග්‍රෑම් යෙදුම ස්ථාපනය කර තිබීම පහසුවක්.",
+    title: "Watch or download",
+    text: "Links open on Telegram, where you can stream the episode straight away or save it to your device. Having the Telegram app installed makes it smoother.",
   },
 ];
 
-export default function HowToPage() {
-  const settings = getSettings();
+export default async function HowToPage() {
+  const settings = await getSettings();
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
       <Reveal>
         <SectionHeading
-          kicker="උපදෙස්"
-          title="නරඹන්න හා බාගන්නේ කෙසේද?"
-          subtitle="පළමු වරට පැමිණි අයට පියවර හතරකින් සම්පූර්ණයි. සියලුම නිකුතු නොමිලේ — ලියාපදිංචියක් අවශ්‍ය නැත."
+          kicker="Guide"
+          title="How to watch and download"
+          subtitle="Four steps and you are done. Everything on this site is free — no account, no sign-up, no payment."
         />
       </Reveal>
 
@@ -68,24 +69,24 @@ export default function HowToPage() {
 
       <Reveal>
         <div className="panel mt-10 p-7">
-          <h2 className="font-display text-base font-black text-white">නිතර අසන ප්‍රශ්න</h2>
+          <h2 className="font-display text-base font-black text-white">Frequently asked questions</h2>
           <dl className="mt-5 space-y-5 text-sm">
             {[
               {
-                q: "කථාංග සිංහලෙන් ද?",
-                a: "ඔව්. අපගේ සියලුම නිකුතු සිංහල හඬකැවීමෙන් යුක්තයි. පිටුවේ සෑම නිකුතුවකම “සිංහල හඬකැවීම” ලෙස පැහැදිලිව සටහන් කර ඇත.",
+                q: "Are the episodes really in Sinhala?",
+                a: "Yes. Every single release in the library carries Sinhala audio, and each release page is labelled “Sinhala Dub” so there is no confusion.",
               },
               {
-                q: "වීඩියෝ වෙබ් අඩවියේ ගබඩා වේද?",
-                a: "නැත. අපි කිසිදු වීඩියෝ ගොනුවක් ගබඩා නොකරමු. සියලුම සබැඳි පිටත සේවාදායක හෝ ටෙලිග්‍රෑම් වෙත යොමු වේ.",
+                q: "Are the videos hosted on this site?",
+                a: "No. We do not store any video files. All links point to an external service or a Telegram channel.",
               },
               {
-                q: "නව කථාංග කවදාද?",
-                a: "සතියකට කථාංග කිහිපයක් සිංහල හඬකැවීමෙන් එක් කෙරේ. නවතම තොරතුරු ටෙලිග්‍රෑම් නාලිකාවෙන් ලැබේ.",
+                q: "How often are new episodes added?",
+                a: "A few episodes are added every week with Sinhala audio. Follow the Telegram channel to hear about them first.",
               },
               {
-                q: "වැඩ නොකරන සබැඳියක් තිබේ නම්?",
-                a: "ටෙලිග්‍රෑම් හරහා අපට දන්වන්න. අපි වහාම එය යාවත්කාලීන කරමු.",
+                q: "What if a link does not work?",
+                a: "Send us a message on Telegram and we will refresh that link as soon as possible.",
               },
             ].map((item) => (
               <div key={item.q} className="border-b border-void-700/70 pb-4 last:border-0">
@@ -103,7 +104,7 @@ export default function HowToPage() {
             href="/releases"
             className="rounded-full bg-linear-to-r from-omni-400 to-omni-600 px-6 py-3 font-display text-xs font-black tracking-wider text-void-950 uppercase"
           >
-            නිකුතු බලන්න
+            Browse releases
           </Link>
           <a
             href={settings.telegram_url}
@@ -111,7 +112,7 @@ export default function HowToPage() {
             rel="noreferrer noopener"
             className="rounded-full border border-omni-400/40 px-6 py-3 font-display text-xs font-black tracking-wider text-omni-200 uppercase transition-colors hover:bg-omni-400/10"
           >
-            උදව් ඉල්ලන්න
+            Ask for help
           </a>
         </div>
       </Reveal>

@@ -7,10 +7,10 @@ import ReleaseForm from "@/components/admin/ReleaseForm";
 import Reveal from "@/components/Reveal";
 import { deleteReleaseAction } from "@/lib/actions";
 import { getReleaseById, listCategories } from "@/lib/queries";
-import { formatDateSi, formatViews } from "@/lib/utils";
+import { formatDateLong, formatViews } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "නිකුතුව සංස්කරණය",
+  title: "Edit release",
   robots: { index: false, follow: false },
 };
 
@@ -21,10 +21,10 @@ export default async function EditReleasePage({ params }: { params: Params }) {
   const releaseId = Number.parseInt(id, 10);
   if (!Number.isFinite(releaseId)) notFound();
 
-  const release = getReleaseById(releaseId);
+  const release = await getReleaseById(releaseId);
   if (!release) notFound();
 
-  const categories = listCategories();
+  const categories = await listCategories();
 
   return (
     <div className="space-y-6">
@@ -32,14 +32,14 @@ export default async function EditReleasePage({ params }: { params: Params }) {
         <div className="panel flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="min-w-0">
             <p className="text-[0.66rem] font-black tracking-[0.3em] text-omni-400 uppercase">
-              නිකුතුව #{release.id} · {release.code}
+              Release #{release.id} · {release.code}
             </p>
             <h1 className="mt-2 line-clamp-1 font-display text-xl font-black text-white">
               {release.title}
             </h1>
             <p className="mt-1 text-xs text-void-200">
-              යාවත්කාලීන: {formatDateSi(release.updated_at)} · නැරඹුම් {formatViews(release.views)} · සබැඳි{" "}
-              {release.qualities.length}
+              Updated {formatDateLong(release.updated_at)} · {formatViews(release.views)} views ·{" "}
+              {release.qualities.length} links
             </p>
           </div>
 
@@ -48,21 +48,21 @@ export default async function EditReleasePage({ params }: { params: Params }) {
               href={`/release/${release.slug}`}
               className="rounded-full border border-omni-400/40 px-5 py-2.5 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/10"
             >
-              පෙරදසුන
+              Preview
             </Link>
             <Link
               href="/admin/releases"
               className="rounded-full border border-void-500 px-5 py-2.5 text-xs font-black tracking-wider text-void-100 uppercase transition-colors hover:border-omni-400/50 hover:text-omni-300"
             >
-              ← ලැයිස්තුව
+              ← List
             </Link>
             <form action={deleteReleaseAction}>
               <input type="hidden" name="id" value={release.id} />
               <ConfirmSubmit
                 className="border-alien-red/40 px-5 py-2.5 text-[0.68rem] tracking-wider text-alien-red uppercase hover:bg-alien-red/10"
-                message={`“${release.title}” ඉවත් කරන්නද? මෙය ආපසු හැරවිය නොහැක.`}
+                message={`Delete “${release.title}”? This cannot be undone.`}
               >
-                නිකුතුව ඉවත් කරන්න
+                Delete release
               </ConfirmSubmit>
             </form>
           </div>

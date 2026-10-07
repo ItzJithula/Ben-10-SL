@@ -30,7 +30,7 @@ export default function BackToTop() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.6, y: 20 }}
           className="group fixed right-5 bottom-5 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-omni-400/50 bg-void-950/85 text-omni-300 shadow-omni backdrop-blur transition-colors hover:border-omni-400 hover:bg-omni-400/15"
-          aria-label="ඉහළට"
+          aria-label="Back to top"
         >
           <span className="absolute inset-0 rounded-full border border-omni-400/40 animate-pulse-ring" />
           <svg

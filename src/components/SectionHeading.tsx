@@ -7,7 +7,7 @@ export default function SectionHeading({
   title,
   subtitle,
   href,
-  hrefLabel = "සියල්ල බලන්න",
+  hrefLabel = "View all",
   align = "left",
   className,
 }: {

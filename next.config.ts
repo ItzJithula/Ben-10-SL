@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // better-sqlite3 is a native module — keep it external to the server bundle.
-  serverExternalPackages: ["better-sqlite3"],
+  // The Neon driver stays external (server-only, never bundled for the browser),
+  // and the embedded local database is a WASM module that must not be bundled.
+  serverExternalPackages: ["@neondatabase/serverless", "@electric-sql/pglite"],
   // Allow the hosted dev preview / LAN devices to load dev assets.
   allowedDevOrigins: [
     "*.e2b.app",

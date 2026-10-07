@@ -5,7 +5,7 @@ import { getSetting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = (process.env.SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const now = new Date();
 
@@ -16,22 +16,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: path === "" ? 1 : 0.8,
   }));
 
-  const categoryRoutes = listCategories().map((category) => ({
+  const categoryRoutes = (await listCategories()).map((category) => ({
     url: `${base}/category/${category.slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
 
-  const releaseRoutes = listReleases({ status: "published", perPage: 60 })
-    .items.map((release) => ({
+  const releaseRoutes = (
+    await listReleases({ status: "published", perPage: 60 })
+  ).items.map((release) => ({
       url: `${base}/release/${release.slug}`,
       lastModified: new Date(release.updated_at.replace(" ", "T") + "Z"),
       changeFrequency: "monthly" as const,
       priority: 0.6,
     }));
 
-  if (getSetting("telegram_url")) {
+  if (await getSetting("telegram_url")) {
     // settings are read so the sitemap regenerates whenever the site config changes
   }
 

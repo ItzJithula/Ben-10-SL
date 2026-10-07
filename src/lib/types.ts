@@ -1,6 +1,6 @@
 /**
  * Shared domain types for Ben 10 SL.
- * Every release on the site is stored in SQLite and exposed through these shapes.
+ * Every release on the site is stored in Postgres (Neon) and exposed through these shapes.
  */
 
 export type EpisodeType = "episode" | "movie" | "special" | "short";
@@ -13,7 +13,7 @@ export type AudioLanguage = "sinhala";
 export interface Category {
   id: number;
   name: string;
-  name_si: string;
+  name_alt: string;
   slug: string;
   description: string;
   accent: string;
@@ -39,7 +39,7 @@ export interface Release {
   category_id: number;
   code: string;
   title: string;
-  title_en: string;
+  subtitle: string;
   slug: string;
   season: number;
   episode_number: number | null;
@@ -64,7 +64,7 @@ export interface Release {
 
 export interface ReleaseWithMeta extends Release {
   category_name: string;
-  category_name_si: string;
+  category_name_alt: string;
   category_slug: string;
   category_accent: string;
   link_count: number;
@@ -96,7 +96,7 @@ export interface ReleaseInput {
   category_id: number;
   code: string;
   title: string;
-  title_en: string;
+  subtitle: string;
   slug: string;
   season: number;
   episode_number: number | null;
@@ -130,6 +130,6 @@ export interface AdminStats {
   movieCount: number;
   totalViews: number;
   linkCount: number;
-  perCategory: { name: string; name_si: string; slug: string; accent: string; count: number }[];
+  perCategory: { name: string; name_alt: string; slug: string; accent: string; count: number }[];
   latest: ReleaseWithMeta[];
 }

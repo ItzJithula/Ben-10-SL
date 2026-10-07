@@ -13,14 +13,16 @@ import { WatchFrame } from "@/components/OmnitrixWatch";
 import { getFeatured, getLatest, getMovies, getSiteStats, getTrending, listCategories } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 
-export default function HomePage() {
-  const settings = getSettings();
-  const categories = listCategories();
-  const stats = getSiteStats();
-  const featured = getFeatured(6);
-  const latest = getLatest(8);
-  const trending = getTrending(6);
-  const movies = getMovies(4);
+export default async function HomePage() {
+  const [settings, categories, stats, featured, latest, trending, movies] = await Promise.all([
+    getSettings(),
+    listCategories(),
+    getSiteStats(),
+    getFeatured(6),
+    getLatest(8),
+    getTrending(6),
+    getMovies(4),
+  ]);
 
   const heroRelease = featured[0] ?? latest[0] ?? null;
 
@@ -44,11 +46,11 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <Reveal>
           <SectionHeading
-            kicker="ප්‍රධාන එකතුව"
-            title="Ben 10 මාලාවන් එකතුව"
-            subtitle="ක්ලැසික් සිට ඕම්නිවර්ස් දක්වා — සෑම මාලාවක්ම සිංහල හඬකැවීම සමඟින්, කථාංග අනුපිළිවෙලට සකසා ඇත."
+            kicker="Main collection"
+            title="The Ben 10 collection"
+            subtitle="From Classic to Omniverse — every series, with Sinhala audio and episodes in order."
             href="/releases"
-            hrefLabel="සියලු නිකුතු"
+            hrefLabel="All releases"
           />
         </Reveal>
         <CategoryGrid categories={categories} />
@@ -58,9 +60,9 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <Reveal>
           <SectionHeading
-            kicker="දැන් නරඹන්න"
-            title="විශේෂ නිකුතුව"
-            subtitle="සෘජුවම මෙතැනින් සිංහල හඬකැවීම නරඹන්න — සම්පූර්ණ කථාංගය පහතින්."
+            kicker="Watch now"
+            title="Featured release"
+            subtitle="Stream it right here with Sinhala audio — full release details are below."
           />
         </Reveal>
         <FeaturedPlayer release={heroRelease} youtubeUrl={settings.featured_youtube} />
@@ -70,9 +72,9 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <Reveal>
           <SectionHeading
-            kicker="අලුත්ම"
-            title="නවතම නිකුතු"
-            subtitle="සෑම සතියකම නව කථාංග සිංහල හඬකැවීමෙන් එක් කෙරේ."
+            kicker="Just added"
+            title="Latest releases"
+            subtitle="New episodes with Sinhala audio are added every week."
             href="/releases?sort=newest"
           />
         </Reveal>
@@ -87,7 +89,7 @@ export default function HomePage() {
 
         {latest.length === 0 ? (
           <p className="panel p-10 text-center text-sm text-void-100">
-            තවම නිකුතු එක් කර නැත. පරිපාලක පැනලයෙන් පළමු නිකුතුව එක් කරන්න.
+            No releases yet. Add the first one from the admin panel.
           </p>
         ) : null}
       </section>
@@ -96,8 +98,8 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <Reveal>
           <ReleaseRail
-            kicker="වැඩිපුරම නරඹන ලද"
-            title="ජනප්‍රිය නිකුතු"
+            kicker="Most watched"
+            title="Trending releases"
             releases={trending}
             href="/releases?sort=views"
             accent="#FFC400"
@@ -110,9 +112,9 @@ export default function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <Reveal>
             <SectionHeading
-              kicker="මහා තිරය"
-              title="චිත්‍රපට හා විශේෂ නිකුතු"
-              subtitle="ටෙලි කථාංගවලට පිටින් පැමිණි සම්පූර්ණ දිග චිත්‍රපට — සියල්ල සිංහලෙන්."
+              kicker="Feature length"
+              title="Movies & Specials"
+              subtitle="Full-length films from outside the TV seasons — all with Sinhala audio."
               href="/movies"
             />
           </Reveal>
@@ -135,9 +137,9 @@ export default function HomePage() {
         <Reveal>
           <SectionHeading
             align="center"
-            kicker="ඔම්නිට්‍රික්ස්"
-            title="එලියන් බලකාය"
-            subtitle="බෙන්ගේ අත් ඔරලෝසුවේ සැඟවී ඇති බලවේග — එක් එක් එලියන්ට තමන්ගේම ශක්තියක් ඇත."
+            kicker="Omnitrix"
+            title="The alien roster"
+            subtitle="The powers locked inside Ben's watch — every alien brings its own strength."
           />
         </Reveal>
         <AlienStrip />
@@ -148,26 +150,26 @@ export default function HomePage() {
         <Reveal>
           <SectionHeading
             align="center"
-            kicker="පහසු ක්‍රමය"
-            title="තත්පර 30කින් නරඹන්න"
+            kicker="Simple steps"
+            title="Start watching in 30 seconds"
           />
         </Reveal>
         <div className="grid gap-5 md:grid-cols-3">
           {[
             {
               step: "01",
-              title: "මාලාව තෝරන්න",
-              text: "ක්ලැසික්, එලියන් ෆෝස්, ඕම්නිවර්ස් වැනි ඔබට කැමති මාලාව තෝරන්න.",
+              title: "Pick a collection",
+              text: "Choose Classic, Alien Force, Omniverse or any other series you want to watch.",
             },
             {
               step: "02",
-              title: "කථාංගය තෝරන්න",
-              text: "නිකුතු පිටුවෙන් කථාංගය හෝ චිත්‍රපටය විවෘත කර ගුණත්වය තෝරන්න.",
+              title: "Choose an episode",
+              text: "Open an episode or movie from the releases page and pick a quality.",
             },
             {
               step: "03",
-              title: "නරඹන්න / බාගන්න",
-              text: "ටෙලිග්‍රෑම් හෝ සබැඳි මගින් සිංහල හඬකැවීම නොමිලේ නරඹන්න හෝ බාගන්න.",
+              title: "Watch or download",
+              text: "Stream or download the Sinhala dub for free through Telegram or a mirror link.",
             },
           ].map((item, index) => (
             <Reveal key={item.step} delay={index * 0.1}>
@@ -191,7 +193,7 @@ export default function HomePage() {
               href="/how-to-download"
               className="rounded-full border border-omni-400/40 px-6 py-3 font-display text-xs font-black tracking-[0.2em] text-omni-200 uppercase transition-colors hover:border-omni-400 hover:bg-omni-400/10"
             >
-              සම්පූර්ණ උපදෙස් කියවන්න
+              Read the full guide
             </Link>
           </div>
         </Reveal>

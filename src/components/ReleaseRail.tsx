@@ -33,7 +33,7 @@ export default function ReleaseRail({
           href={href}
           className="shrink-0 rounded-full border border-omni-400/35 px-4 py-2 text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:border-omni-400 hover:bg-omni-400/10"
         >
-          සියල්ල →
+          View all →
         </Link>
       </div>
 
@@ -61,7 +61,7 @@ export default function ReleaseRail({
                 #{index + 1}
               </span>
               <span className="absolute bottom-3 left-3 rounded-full bg-omni-400/90 px-2.5 py-0.5 text-[0.6rem] font-black tracking-wider text-void-950 uppercase">
-                සිංහල
+                Sinhala
               </span>
             </div>
             <div className="space-y-1 p-4">
@@ -69,7 +69,7 @@ export default function ReleaseRail({
                 {release.title}
               </h3>
               <p className="text-[0.68rem] font-bold tracking-wider text-void-200 uppercase">
-                {episodeLabel(release)} · {formatViews(release.views)} නැරඹුම්
+                {episodeLabel(release)} · {formatViews(release.views)} views
               </p>
             </div>
           </Link>
