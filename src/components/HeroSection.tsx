@@ -151,18 +151,15 @@ export default function HeroSection({
           </motion.dl>
         </div>
 
-        {/* Omnitrix */}
+        {/* Omnitrix — the interactive alien wheel */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
           animate={{ opacity: 1, scale: 1, rotate: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mx-auto flex items-center justify-center"
+          className="relative mx-auto flex items-center justify-center py-4"
         >
           <div className="absolute inset-0 -z-10 rounded-full bg-omni-400/15 blur-[90px]" />
-          <OmnitrixWatch size={330} className="animate-float" />
-          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-omni-400/40 bg-void-950/85 px-4 py-1.5 text-[0.62rem] font-black tracking-[0.24em] text-omni-300 uppercase backdrop-blur">
-            Click to activate
-          </div>
+          <OmnitrixWatch size={320} />
         </motion.div>
       </div>
     </section>

@@ -5,7 +5,7 @@ import OmnitrixWatch from "@/components/OmnitrixWatch";
 export default function NotFound() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center">
-      <OmnitrixWatch size={200} />
+      <OmnitrixWatch size={200} interactive={false} />
       <p className="mt-10 font-display text-6xl font-black text-omni-400/25">404</p>
       <h1 className="mt-2 font-display text-2xl font-black text-white sm:text-3xl">
         This page could not be found

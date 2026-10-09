@@ -20,7 +20,7 @@ export default async function AdminLoginPage() {
   return (
     <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
       <div className="flex justify-center order-2 lg:order-1">
-        <OmnitrixWatch size={280} />
+        <OmnitrixWatch size={280} interactive={false} />
       </div>
 
       <div className="order-1 lg:order-2">
