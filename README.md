@@ -101,11 +101,15 @@ Behaviour:
 The logo is stored in settings (`logo_url`) and is used in the header, footer and admin panel.
 Three ways to set it:
 
-1. **Upload** — Admin → Settings → *Upload a logo* (PNG / JPG / WEBP / SVG, ≤ 3 MB) → saved to
-   `public/uploads/`.
-2. **Paste a URL** — Admin → Settings → *Logo image URL*
-   (the default is `https://i.ibb.co/99p93Zfc/file-66.jpg`).
-3. **Replace the file** — drop your artwork at `public/logo.svg` (or `.png`) and set that path.
+1. **Upload** — Admin → Settings → *Upload a logo* (PNG / JPG / WEBP / SVG, ≤ 3 MB). The image
+   is stored **in the database** and served from `/logo-image`, so it survives every deploy
+   (writing it to `public/uploads/` does not on serverless hosts).
+2. **Paste a URL** — Admin → Settings → *Logo image URL*.
+3. **Replace the file** — drop your artwork at `public/logo.svg` (or `.png`) and point
+   `logo_url` at it.
+
+The default mark is `public/logo.svg`. The originally hosted logo (i.ibb.co) went offline;
+any setting still pointing there is healed back to the local file automatically on startup.
 
 If the configured image cannot be loaded, the header falls back to the built-in neon mark in
 `public/logo.svg`, so the site never shows a broken logo.
@@ -136,7 +140,8 @@ Add as many more as you like — a new collection shows up in the navigation men
 - **Tailwind CSS v4** design tokens (`src/app/globals.css`) with an Omnitrix palette + collection accents
 - **Framer Motion** scroll reveals & micro-interactions, **Lenis** smooth scrolling
 - **PostgreSQL on [Neon](https://neon.tech)** via `@neondatabase/serverless` (SQL over HTTPS,
-  serverless-friendly) — plus **PGlite** as an embedded local Postgres for zero-config development
+  serverless-friendly), with an automatic **node-postgres (`pg`) fallback** for any other
+  Postgres host — plus **PGlite** as an embedded local Postgres for zero-config development
 - **Fontsource** — Orbitron (display) and Rajdhani (body)
 - Zero runtime cost for the Omnitrix: pure SVG + CSS keyframes
 
@@ -168,7 +173,7 @@ src/
     ├── settings.ts      # key/value settings store
     ├── types.ts  utils.ts  server-paths.ts
 public/
-├── logo.svg  art/*.jpg  uploads/
+├── logo.svg  art/*.jpg
 ```
 
 ---

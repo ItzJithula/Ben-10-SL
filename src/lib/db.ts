@@ -4,7 +4,7 @@ import path from "node:path";
 import { dataDir } from "./server-paths";
 
 /**
- * Database layer — PostgreSQL on Neon, queried over HTTPS.
+ * Database layer — PostgreSQL (Neon) in production, embedded PGlite locally.
  *
  * The connection string is read from the environment (Vercel sets `DATABASE_URL`
  * when you attach a Neon database to the project):
@@ -16,9 +16,20 @@ import { dataDir } from "./server-paths";
  * database is still empty. Everything is idempotent, so restarts and concurrent
  * cold starts are safe.
  *
- * Local development without a Neon database falls back to an embedded
- * PostgreSQL (PGlite) that persists to ./data/pglite, so `npm run dev` keeps
- * working with zero configuration.
+ * Drivers — whichever connection string is found:
+ *   • `*.neon.tech` hosts use the Neon serverless HTTP driver (no TCP sockets,
+ *     ideal inside serverless functions).
+ *   • Any other Postgres host falls back to node-postgres (`pg`) over TCP, so a
+ *     pooled/unpooled URL from another provider keeps working too.
+ *   • No connection string at all → embedded PostgreSQL (PGlite) under
+ *     ./data/pglite, so `npm run dev` works with zero configuration.
+ *
+ * Reliability notes:
+ *   • Multi-statement transactions are sent in modest chunks; if a batch is
+ *     rejected the statements are retried one by one (every statement in this
+ *     file is idempotent, so partial application is safe).
+ *   • Every failure is logged with its real message (production error digests
+ *     hide it otherwise), then rethrown.
  */
 
 /* ------------------------------------------------------------------ */
@@ -32,9 +43,13 @@ export interface Statement {
 
 interface Driver {
   /** Name of the active backend, handy in logs. */
-  label: "neon" | "pglite";
+  label: "neon" | "pg" | "pglite";
   query<T>(text: string, params: unknown[]): Promise<T[]>;
-  /** Runs every statement in one Postgres transaction (single round trip). */
+  /**
+   * Runs every statement in one Postgres transaction. All statements in this
+   * project are idempotent, so a driver may split them across round trips and
+   * retry individually if a batch fails.
+   */
   transaction(statements: Statement[]): Promise<void>;
 }
 
@@ -60,6 +75,53 @@ export function usingNeon(): boolean {
 /** `to_char(...)` expression used for created_at / updated_at (kept as text). */
 export const NOW_SQL = `to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')`;
 
+/** Max statements per batched transaction round trip. */
+const TXN_CHUNK = 16;
+
+/** Human-readable DB error for logs — production digests hide the real message. */
+function describeError(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const e = error as { message?: string; code?: string; detail?: string; hint?: string };
+    return [e.message ?? String(error), e.code && `code=${e.code}`, e.detail && `detail=${e.detail}`, e.hint && `hint=${e.hint}`]
+      .filter(Boolean)
+      .join(" | ");
+  }
+  return String(error);
+}
+
+function logFailure(scope: string, error: unknown): void {
+  console.error(`[Ben 10 SL] ${scope}: ${describeError(error)}`);
+}
+
+/**
+ * Runs statements in one transaction, in chunks of TXN_CHUNK. If a chunk is
+ * rejected (batch-size limits, protocol quirks, transient errors), the chunk is
+ * retried statement by statement before giving up.
+ */
+async function runChunked(
+  driver: Pick<Driver, "query" | "transaction">,
+  statements: Statement[],
+  scope: string,
+): Promise<void> {
+  for (let offset = 0; offset < statements.length; offset += TXN_CHUNK) {
+    const chunk = statements.slice(offset, offset + TXN_CHUNK);
+    try {
+      await driver.transaction(chunk);
+    } catch (batchError) {
+      logFailure(`${scope} — batch of ${chunk.length} failed, retrying one by one`, batchError);
+      for (const statement of chunk) {
+        try {
+          await driver.query(statement.text, statement.params ?? []);
+        } catch (statementError) {
+          logFailure(`${scope} — statement failed: ${statement.text.trim().slice(0, 120)}`, statementError);
+          throw statementError;
+        }
+      }
+    }
+  }
+}
+
+/** Neon serverless driver (HTTP) — used for *.neon.tech hosts. */
 async function createNeonDriver(url: string): Promise<Driver> {
   const { neon } = await import("@neondatabase/serverless");
   const sql = neon(url);
@@ -67,7 +129,12 @@ async function createNeonDriver(url: string): Promise<Driver> {
   return {
     label: "neon",
     async query<T>(text: string, params: unknown[]): Promise<T[]> {
-      return (await sql.query(text, params)) as T[];
+      try {
+        return (await sql.query(text, params)) as T[];
+      } catch (error) {
+        logFailure(`query failed: ${text.trim().slice(0, 120)}`, error);
+        throw error;
+      }
     },
     async transaction(statements: Statement[]): Promise<void> {
       if (statements.length === 0) return;
@@ -76,6 +143,63 @@ async function createNeonDriver(url: string): Promise<Driver> {
       );
     },
   };
+}
+
+/**
+ * Generic PostgreSQL over TCP (node-postgres) — used for any non-Neon host so
+ * a connection string from another provider (or a direct TCP URL) still works.
+ */
+async function createPgDriver(url: string): Promise<Driver> {
+  const { Pool } = await import("pg");
+  const pool = new Pool({
+    connectionString: url,
+    max: 1,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 15_000,
+  });
+  // an idle connection dropping between serverless invocations must not crash
+  pool.on("error", () => undefined);
+
+  return {
+    label: "pg",
+    async query<T>(text: string, params: unknown[]): Promise<T[]> {
+      try {
+        const result = await pool.query(text, params as unknown[]);
+        return result.rows as T[];
+      } catch (error) {
+        logFailure(`query failed: ${text.trim().slice(0, 120)}`, error);
+        throw error;
+      }
+    },
+    async transaction(statements: Statement[]): Promise<void> {
+      if (statements.length === 0) return;
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        for (const statement of statements) {
+          await client.query(statement.text, statement.params as unknown[]);
+        }
+        await client.query("COMMIT");
+      } catch (error) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          /* connection may already be broken */
+        }
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+  };
+}
+
+function isNeonHost(url: string): boolean {
+  try {
+    return new URL(url).hostname.toLowerCase().endsWith(".neon.tech");
+  } catch {
+    return false;
+  }
 }
 
 /** Embedded PostgreSQL for local development (no DATABASE_URL required). */
@@ -106,6 +230,7 @@ async function createLocalDriver(): Promise<Driver> {
 const globalForDb = globalThis as unknown as {
   __ben10slDriver?: Promise<Driver>;
   __ben10slReady?: WeakMap<Driver, Promise<void>>;
+  __ben10slPgFallback?: Promise<Driver>;
 };
 
 function driver(): Promise<Driver> {
@@ -114,7 +239,7 @@ function driver(): Promise<Driver> {
     let pending: Promise<Driver>;
 
     if (url) {
-      pending = createNeonDriver(url);
+      pending = isNeonHost(url) ? createNeonDriver(url) : createPgDriver(url);
     } else if (process.env.NODE_ENV === "production") {
       pending = Promise.reject(
         new Error(
@@ -155,9 +280,31 @@ async function ready(): Promise<Driver> {
       globalForDb.__ben10slReady?.delete(active);
     });
   }
-  await initialised;
 
-  return active;
+  try {
+    await initialised;
+    return active;
+  } catch (error) {
+    // The Neon HTTP transport can fail even with a valid connection string
+    // (odd pooler URLs, proxies, protocol quirks) while plain TCP to the same
+    // database works. Fall back once to node-postgres — same data, other road.
+    const url = connectionString();
+    if (active.label === "neon" && url) {
+      globalForDb.__ben10slPgFallback ??= (async () => {
+        logFailure("Neon HTTP driver failed — retrying over TCP with node-postgres", error);
+        const fallback = await createPgDriver(url);
+        globalForDb.__ben10slDriver = Promise.resolve(fallback);
+        await ready();
+        return fallback;
+      })().catch((fallbackError) => {
+        // allow a later request to try the whole sequence again
+        globalForDb.__ben10slPgFallback = undefined;
+        throw fallbackError;
+      });
+      return globalForDb.__ben10slPgFallback;
+    }
+    throw error;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -910,7 +1057,8 @@ const SETTINGS_SEED: Record<string, string> = {
   site_tagline: "Sinhala Dubbed Episodes",
   site_description:
     "Every Ben 10 episode and movie, fully dubbed in Sinhala. Free to stream and download, organised by series.",
-  logo_url: "https://i.ibb.co/99p93Zfc/file-66.jpg",
+  // local mark in /public — the previously hosted logo (i.ibb.co) went offline
+  logo_url: "/logo.svg",
   logo_text: "Ben 10 SL",
   announcement: "🎬 New this week — every Ben 10 movie is now streaming with Sinhala audio!",
   hero_kicker: "100% Sinhala Dub",
@@ -1032,16 +1180,40 @@ const SETTINGS_SEED_STATEMENTS: Statement[] = Object.entries(SETTINGS_SEED).map(
   params: [key, value],
 }));
 
+/**
+ * The site logo the archive ships with. The user's original hosted logo
+ * (i.ibb.co) went offline, so any setting still pointing there is healed back
+ * to the local file automatically. Replace `public/logo.svg` (or change this
+ * constant) to restyle the site mark.
+ */
+export const FALLBACK_LOGO_URL = "/logo.svg";
+
+const DEAD_LOGO_URL = "https://i.ibb.co/99p93Zfc/file-66.jpg";
+
 /** Creates the schema (idempotent) and seeds the archive when it is empty. */
 async function ensureDatabase(driver: Driver): Promise<void> {
   console.log(
     `[Ben 10 SL] database ready (${driver.label}${driver.label === "pglite" ? " — local development fallback" : ""})`,
   );
 
-  await driver.transaction([...SCHEMA, ...SETTINGS_SEED_STATEMENTS]);
+  try {
+    await runChunked(driver, SCHEMA, "database schema");
+    await runChunked(driver, SETTINGS_SEED_STATEMENTS, "database settings");
 
-  const [row] = await driver.query<{ c: number }>("SELECT COUNT(*)::int AS c FROM categories", []);
-  if ((row?.c ?? 0) === 0) {
-    await driver.transaction(seedStatements());
+    // Self-heal settings that point at the retired hosted logo.
+    await driver.query(
+      `UPDATE settings SET value = $1
+       WHERE key = 'logo_url' AND (value = $2 OR value = '' OR value IS NULL)`,
+      [FALLBACK_LOGO_URL, DEAD_LOGO_URL],
+    );
+
+    const [row] = await driver.query<{ c: number }>("SELECT COUNT(*)::int AS c FROM categories", []);
+    if ((row?.c ?? 0) === 0) {
+      await runChunked(driver, seedStatements(), "database seed");
+      console.log("[Ben 10 SL] demo archive seeded");
+    }
+  } catch (error) {
+    logFailure("database init failed", error);
+    throw error;
   }
 }

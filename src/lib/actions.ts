@@ -1,8 +1,5 @@
 "use server";
 
-import fs from "node:fs";
-import path from "node:path";
-
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -451,20 +448,14 @@ export async function uploadLogoAction(form: FormData): Promise<void> {
   if (file.size > 3 * 1024 * 1024) redirect("/admin/settings?error=size");
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  let logoUrl: string;
 
-  try {
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    fs.mkdirSync(uploadDir, { recursive: true });
-    const fileName = `logo-${Date.now()}.${extension}`;
-    fs.writeFileSync(path.join(uploadDir, fileName), buffer);
-    logoUrl = `/uploads/${fileName}`;
-  } catch {
-    if (file.size > 1_500_000) redirect("/admin/settings?error=size");
-    logoUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
-  }
-
-  await updateSettings({ logo_url: logoUrl });
+  // Keep the image in the database and serve it from /logo-image. Writing it
+  // under `public/uploads` does not survive a redeploy on serverless hosts.
+  await updateSettings({
+    logo_data: buffer.toString("base64"),
+    logo_data_mime: file.type,
+    logo_url: "/logo-image",
+  });
 
   revalidatePath("/", "layout");
   redirect("/admin/settings?saved=1&uploaded=1");
