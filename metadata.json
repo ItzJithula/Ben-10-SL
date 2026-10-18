@@ -1,0 +1,6 @@
+{
+  "name": "Ben 10 SL",
+  "description": "Ben 10 SL — Sinhala dubbed Ben 10 episode archive with an admin dashboard (Next.js + Neon Postgres).",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

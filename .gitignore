@@ -6,18 +6,26 @@
 *.tsbuildinfo
 next-env.d.ts
 
-# local database + backups (re-created & seeded automatically on first run)
-/data/*.db
-/data/*.db-journal
-/data/*.db-wal
-/data/*.db-shm
+# local database + temporary files
+/data
+/data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 
-# env
+# environment files (never push secrets to git)
 .env
+.env.*
 .env.local
-.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
 # misc
 .DS_Store
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

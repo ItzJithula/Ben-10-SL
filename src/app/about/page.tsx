@@ -66,7 +66,7 @@ export default async function AboutPage() {
 
         <Reveal direction="left">
           <div className="flex justify-center">
-            <OmnitrixWatch size={280} interactive={false} />
+            <OmnitrixWatch size={300} interactive={true} />
           </div>
         </Reveal>
       </section>

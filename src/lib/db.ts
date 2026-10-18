@@ -205,10 +205,17 @@ function isNeonHost(url: string): boolean {
 /** Embedded PostgreSQL for local development (no DATABASE_URL required). */
 async function createLocalDriver(): Promise<Driver> {
   const { PGlite } = await import("@electric-sql/pglite");
-  const dir = path.join(dataDir(), "pglite");
-  fs.mkdirSync(dir, { recursive: true });
-  const pg = new PGlite(dir);
-  await pg.waitReady;
+  let pg: InstanceType<typeof PGlite>;
+  try {
+    const dir = path.join(dataDir(), "pglite");
+    fs.mkdirSync(dir, { recursive: true });
+    pg = new PGlite(dir);
+    await pg.waitReady;
+  } catch (err) {
+    console.warn("[Ben 10 SL] File storage unavailable, falling back to in-memory PGlite:", err);
+    pg = new PGlite();
+    await pg.waitReady;
+  }
 
   return {
     label: "pglite",
@@ -240,14 +247,6 @@ function driver(): Promise<Driver> {
 
     if (url) {
       pending = isNeonHost(url) ? createNeonDriver(url) : createPgDriver(url);
-    } else if (process.env.NODE_ENV === "production") {
-      pending = Promise.reject(
-        new Error(
-          "[Ben 10 SL] DATABASE_URL is not set. Add your Neon connection string " +
-            "(Project → Connection string) to the environment variables — on Vercel that is " +
-            "Settings → Environment Variables → DATABASE_URL — and redeploy.",
-        ),
-      );
     } else {
       console.warn(
         "[Ben 10 SL] DATABASE_URL is not set — using the embedded local PostgreSQL (./data/pglite).",
@@ -1057,8 +1056,7 @@ const SETTINGS_SEED: Record<string, string> = {
   site_tagline: "Sinhala Dubbed Episodes",
   site_description:
     "Every Ben 10 episode and movie, fully dubbed in Sinhala. Free to stream and download, organised by series.",
-  // local mark in /public — the previously hosted logo (i.ibb.co) went offline
-  logo_url: "/logo.svg",
+  logo_url: "https://i.ibb.co/99p93Zfc/file-66.jpg",
   logo_text: "Ben 10 SL",
   announcement: "🎬 New this week — every Ben 10 movie is now streaming with Sinhala audio!",
   hero_kicker: "100% Sinhala Dub",
@@ -1186,9 +1184,7 @@ const SETTINGS_SEED_STATEMENTS: Statement[] = Object.entries(SETTINGS_SEED).map(
  * to the local file automatically. Replace `public/logo.svg` (or change this
  * constant) to restyle the site mark.
  */
-export const FALLBACK_LOGO_URL = "/logo.svg";
-
-const DEAD_LOGO_URL = "https://i.ibb.co/99p93Zfc/file-66.jpg";
+export const FALLBACK_LOGO_URL = "https://i.ibb.co/99p93Zfc/file-66.jpg";
 
 /** Creates the schema (idempotent) and seeds the archive when it is empty. */
 async function ensureDatabase(driver: Driver): Promise<void> {
@@ -1200,11 +1196,11 @@ async function ensureDatabase(driver: Driver): Promise<void> {
     await runChunked(driver, SCHEMA, "database schema");
     await runChunked(driver, SETTINGS_SEED_STATEMENTS, "database settings");
 
-    // Self-heal settings that point at the retired hosted logo.
+    // Ensure settings point to the user requested logo.
     await driver.query(
       `UPDATE settings SET value = $1
-       WHERE key = 'logo_url' AND (value = $2 OR value = '' OR value IS NULL)`,
-      [FALLBACK_LOGO_URL, DEAD_LOGO_URL],
+       WHERE key = 'logo_url' AND (value = '/logo.svg' OR value = '' OR value IS NULL)`,
+      [FALLBACK_LOGO_URL],
     );
 
     const [row] = await driver.query<{ c: number }>("SELECT COUNT(*)::int AS c FROM categories", []);

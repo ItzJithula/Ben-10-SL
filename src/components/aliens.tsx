@@ -28,6 +28,8 @@ export interface Alien {
   powers: string;
   /** Accent colour used in the transformed state. */
   accent: string;
+  /** Full action photo for the transformed state. */
+  image: string;
   shapes: AlienShape[];
 }
 
@@ -38,6 +40,7 @@ export const ALIENS: Alien[] = [
     species: "Pyronite",
     powers: "Fire blasts, flight and melting heat.",
     accent: "#ff7a00",
+    image: "/art/aliens/heatblast.jpg",
     shapes: [
       { t: "poly", points: [15, 40, 21, 16, 27, 30, 32, 8, 37, 30, 43, 16, 49, 40] },
       { t: "path", d: "M15 38 h34 a4 4 0 0 1 4 4 v6 a10 10 0 0 1 -10 10 h-22 a10 10 0 0 1 -10 -10 v-6 a4 4 0 0 1 4 -4 z" },
@@ -51,6 +54,7 @@ export const ALIENS: Alien[] = [
     species: "Vulpimancer",
     powers: "Super senses, claws and raw strength.",
     accent: "#ff3b3b",
+    image: "/art/aliens/wildmutt.jpg",
     shapes: [
       { t: "poly", points: [14, 30, 8, 12, 24, 22] },
       { t: "poly", points: [50, 30, 56, 12, 40, 22] },
@@ -67,6 +71,7 @@ export const ALIENS: Alien[] = [
     species: "Petrosapien",
     powers: "Crystal shards and bullet-proof armour.",
     accent: "#00e5ff",
+    image: "/art/aliens/diamondhead.jpg",
     shapes: [
       { t: "poly", points: [32, 2, 42, 20, 32, 34, 22, 20] },
       { t: "poly", points: [8, 58, 18, 30, 28, 44, 32, 36, 36, 44, 46, 30, 56, 58] },
@@ -80,6 +85,7 @@ export const ALIENS: Alien[] = [
     species: "Kineceleran",
     powers: "300 mph sprint and tornado spins.",
     accent: "#39ff14",
+    image: "/art/aliens/xlr8.jpg",
     shapes: [
       { t: "poly", points: [32, 4, 42, 26, 22, 26] },
       { t: "ellipse", cx: 32, cy: 38, rx: 16, ry: 15 },
@@ -94,6 +100,7 @@ export const ALIENS: Alien[] = [
     species: "Galvan",
     powers: "Genius intellect and tiny size.",
     accent: "#aaff7d",
+    image: "/art/aliens/grey-matter.jpg",
     shapes: [
       { t: "ellipse", cx: 32, cy: 56, rx: 11, ry: 6 },
       { t: "ellipse", cx: 32, cy: 32, rx: 21, ry: 17 },
@@ -110,6 +117,7 @@ export const ALIENS: Alien[] = [
     species: "Tetramand",
     powers: "Four fists and shockwave claps.",
     accent: "#ff2e88",
+    image: "/art/aliens/four-arms.jpg",
     shapes: [
       { t: "poly", points: [8, 34, 16, 18, 22, 24, 16, 40] },
       { t: "poly", points: [56, 34, 48, 18, 42, 24, 48, 40] },
@@ -127,6 +135,7 @@ export const ALIENS: Alien[] = [
     species: "Lepidopterran",
     powers: "Flight, goo and stink gas.",
     accent: "#ffc400",
+    image: "/art/aliens/stinkfly.jpg",
     shapes: [
       { t: "ellipse", cx: 16, cy: 26, rx: 12, ry: 5, rot: -30 },
       { t: "ellipse", cx: 48, cy: 26, rx: 12, ry: 5, rot: 30 },
@@ -145,6 +154,7 @@ export const ALIENS: Alien[] = [
     species: "Piscciss Volann",
     powers: "Deep-sea swimming and crushing jaws.",
     accent: "#00e5ff",
+    image: "/art/aliens/ripjaws.jpg",
     shapes: [
       { t: "circle", cx: 32, cy: 5, r: 4 },
       { t: "line", x1: 32, y1: 9, x2: 32, y2: 20, w: 2 },
@@ -160,6 +170,7 @@ export const ALIENS: Alien[] = [
     species: "Galvanic Mechamorph",
     powers: "Merges with and upgrades any machine.",
     accent: "#7dff3d",
+    image: "/art/aliens/upgrade.jpg",
     shapes: [
       { t: "path", d: "M32 4 a22 20 0 0 1 22 20 v16 a10 10 0 0 1 -10 10 h-24 a10 10 0 0 1 -10 -10 v-16 a22 20 0 0 1 22 -20 z" },
       { t: "ellipse", cx: 32, cy: 28, rx: 10, ry: 8, cut: true },
@@ -175,6 +186,7 @@ export const ALIENS: Alien[] = [
     species: "Ectonurite",
     powers: "Invisibility, phasing and possession.",
     accent: "#b026ff",
+    image: "/art/aliens/ghostfreak.jpg",
     shapes: [
       { t: "poly", points: [20, 14, 25, 2, 29, 12, 32, 0, 35, 12, 39, 2, 44, 14] },
       { t: "path", d: "M32 8 L50 24 L54 60 L10 60 L14 24 Z" },

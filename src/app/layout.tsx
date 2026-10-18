@@ -36,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "Ben 10 SL",
       "Sinhala dubbed cartoons",
     ],
-    icons: { icon: "/logo.svg" },
+    icons: { icon: "/favicon.ico" },
     openGraph: {
       title: `${settings.site_name} — ${settings.site_tagline}`,
       description: settings.site_description,

@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 
 /**
@@ -8,7 +9,12 @@ import path from "node:path";
 /**
  * Directory used by the embedded local database (./data/pglite) when no
  * `DATABASE_URL` is configured. Override with `DATA_DIR`.
+ * On serverless environments (such as Vercel), writes to /tmp because root is read-only.
  */
 export function dataDir(): string {
-  return process.env.DATA_DIR ?? path.join(process.cwd(), "data");
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), "ben10sl-data");
+  }
+  return path.join(process.cwd(), "data");
 }

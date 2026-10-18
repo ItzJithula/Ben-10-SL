@@ -13,7 +13,7 @@ import { cx } from "@/lib/utils";
  * fall back to the built-in mark so the header never shows a broken image.
  */
 export default function Logo({
-  src,
+  src = "https://i.ibb.co/99p93Zfc/file-66.jpg",
   alt = "Ben 10 SL",
   width = 52,
   href = "/",
@@ -29,7 +29,8 @@ export default function Logo({
   tagline?: string;
   className?: string;
 }) {
-  const [source, setSource] = useState(src || "/logo.svg");
+  const effectiveSrc = src || "https://i.ibb.co/99p93Zfc/file-66.jpg";
+  const [source, setSource] = useState(effectiveSrc);
   const [failed, setFailed] = useState(false);
 
   const content = (
