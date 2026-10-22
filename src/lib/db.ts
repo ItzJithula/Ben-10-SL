@@ -43,7 +43,7 @@ export interface Statement {
 
 interface Driver {
   /** Name of the active backend, handy in logs. */
-  label: "neon" | "pg" | "pglite";
+  label: "neon" | "pg" | "pglite" | "memory";
   query<T>(text: string, params: unknown[]): Promise<T[]>;
   /**
    * Runs every statement in one Postgres transaction. All statements in this
@@ -204,34 +204,42 @@ function isNeonHost(url: string): boolean {
 
 /** Embedded PostgreSQL for local development (no DATABASE_URL required). */
 async function createLocalDriver(): Promise<Driver> {
-  const { PGlite } = await import("@electric-sql/pglite");
-  let pg: InstanceType<typeof PGlite>;
   try {
-    const dir = path.join(dataDir(), "pglite");
-    fs.mkdirSync(dir, { recursive: true });
-    pg = new PGlite(dir);
-    await pg.waitReady;
-  } catch (err) {
-    console.warn("[Ben 10 SL] File storage unavailable, falling back to in-memory PGlite:", err);
-    pg = new PGlite();
-    await pg.waitReady;
-  }
+    const { PGlite } = await import("@electric-sql/pglite");
+    let pg: InstanceType<typeof PGlite>;
+    try {
+      const dir = path.join(dataDir(), "pglite");
+      fs.mkdirSync(dir, { recursive: true });
+      pg = new PGlite(dir);
+      await pg.waitReady;
+    } catch (err) {
+      console.warn("[Ben 10 SL] File storage unavailable, falling back to in-memory PGlite:", err);
+      pg = new PGlite();
+      await pg.waitReady;
+    }
 
-  return {
-    label: "pglite",
-    async query<T>(text: string, params: unknown[]): Promise<T[]> {
-      const result = await pg.query<T>(text, params);
-      return result.rows;
-    },
-    async transaction(statements: Statement[]): Promise<void> {
-      if (statements.length === 0) return;
-      await pg.transaction(async (tx) => {
-        for (const statement of statements) {
-          await tx.query(statement.text, statement.params ?? []);
-        }
-      });
-    },
-  };
+    return {
+      label: "pglite",
+      async query<T>(text: string, params: unknown[]): Promise<T[]> {
+        const result = await pg.query<T>(text, params);
+        return result.rows;
+      },
+      async transaction(statements: Statement[]): Promise<void> {
+        if (statements.length === 0) return;
+        await pg.transaction(async (tx) => {
+          for (const statement of statements) {
+            await tx.query(statement.text, statement.params ?? []);
+          }
+        });
+      },
+    };
+  } catch (err) {
+    console.warn(
+      "[Ben 10 SL] @electric-sql/pglite could not be loaded in this runtime (e.g. Vercel Serverless), using in-memory driver:",
+      err,
+    );
+    return getMemoryDriver();
+  }
 }
 
 const globalForDb = globalThis as unknown as {
@@ -268,41 +276,45 @@ function driver(): Promise<Driver> {
 
 /** Resolves the driver and makes sure the schema exists (once per process). */
 async function ready(): Promise<Driver> {
-  const active = await driver();
-
-  globalForDb.__ben10slReady ??= new WeakMap();
-  let initialised = globalForDb.__ben10slReady.get(active);
-  if (!initialised) {
-    initialised = ensureDatabase(active);
-    globalForDb.__ben10slReady.set(active, initialised);
-    initialised.catch(() => {
-      globalForDb.__ben10slReady?.delete(active);
-    });
-  }
-
   try {
-    await initialised;
-    return active;
-  } catch (error) {
-    // The Neon HTTP transport can fail even with a valid connection string
-    // (odd pooler URLs, proxies, protocol quirks) while plain TCP to the same
-    // database works. Fall back once to node-postgres — same data, other road.
-    const url = connectionString();
-    if (active.label === "neon" && url) {
-      globalForDb.__ben10slPgFallback ??= (async () => {
-        logFailure("Neon HTTP driver failed — retrying over TCP with node-postgres", error);
-        const fallback = await createPgDriver(url);
-        globalForDb.__ben10slDriver = Promise.resolve(fallback);
-        await ready();
-        return fallback;
-      })().catch((fallbackError) => {
-        // allow a later request to try the whole sequence again
-        globalForDb.__ben10slPgFallback = undefined;
-        throw fallbackError;
+    const active = await driver();
+
+    globalForDb.__ben10slReady ??= new WeakMap();
+    let initialised = globalForDb.__ben10slReady.get(active);
+    if (!initialised) {
+      initialised = ensureDatabase(active);
+      globalForDb.__ben10slReady.set(active, initialised);
+      initialised.catch(() => {
+        globalForDb.__ben10slReady?.delete(active);
       });
-      return globalForDb.__ben10slPgFallback;
     }
-    throw error;
+
+    try {
+      await initialised;
+      return active;
+    } catch (error) {
+      // The Neon HTTP transport can fail even with a valid connection string
+      // (odd pooler URLs, proxies, protocol quirks) while plain TCP to the same
+      // database works. Fall back once to node-postgres — same data, other road.
+      const url = connectionString();
+      if (active.label === "neon" && url) {
+        try {
+          logFailure("Neon HTTP driver failed — retrying over TCP with node-postgres", error);
+          const fallback = await createPgDriver(url);
+          globalForDb.__ben10slDriver = Promise.resolve(fallback);
+          await ready();
+          return fallback;
+        } catch (fallbackError) {
+          logFailure("Postgres TCP fallback failed — using in-memory driver", fallbackError);
+          return getMemoryDriver();
+        }
+      }
+      logFailure("database ready failed, falling back to in-memory driver", error);
+      return getMemoryDriver();
+    }
+  } catch (err) {
+    logFailure("driver resolution failed, falling back to in-memory driver", err);
+    return getMemoryDriver();
   }
 }
 
@@ -315,8 +327,13 @@ export async function query<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  const active = await ready();
-  return active.query<T>(text, params);
+  try {
+    const active = await ready();
+    return await active.query<T>(text, params);
+  } catch (error) {
+    logFailure(`query failed on active driver, executing in memory fallback: ${text.slice(0, 80)}`, error);
+    return getMemoryDriver().query<T>(text, params);
+  }
 }
 
 /** Runs a query that is expected to return at most one row. */
@@ -335,8 +352,13 @@ export async function execute(text: string, params: unknown[] = []): Promise<voi
 
 /** Runs several statements atomically, in a single transaction. */
 export async function transaction(statements: Statement[]): Promise<void> {
-  const active = await ready();
-  await active.transaction(statements);
+  try {
+    const active = await ready();
+    await active.transaction(statements);
+  } catch (error) {
+    logFailure("transaction failed on active driver, executing in memory fallback", error);
+    await getMemoryDriver().transaction(statements);
+  }
 }
 
 /** True when the error is a Postgres unique-constraint violation (23505). */
@@ -1188,6 +1210,10 @@ export const FALLBACK_LOGO_URL = "https://i.ibb.co/99p93Zfc/file-66.jpg";
 
 /** Creates the schema (idempotent) and seeds the archive when it is empty. */
 async function ensureDatabase(driver: Driver): Promise<void> {
+  if (driver.label === "memory") {
+    return;
+  }
+
   console.log(
     `[Ben 10 SL] database ready (${driver.label}${driver.label === "pglite" ? " — local development fallback" : ""})`,
   );
@@ -1213,3 +1239,420 @@ async function ensureDatabase(driver: Driver): Promise<void> {
     throw error;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* In-memory store fallback (zero-dependency, instant on Vercel)      */
+/* ------------------------------------------------------------------ */
+
+interface MemCategoryItem {
+  id: number;
+  name: string;
+  name_alt: string;
+  slug: string;
+  description: string;
+  accent: string;
+  sort_order: number;
+  created_at: string;
+}
+
+interface MemReleaseItem {
+  id: number;
+  category_id: number;
+  code: string;
+  title: string;
+  subtitle: string;
+  slug: string;
+  season: number;
+  episode_number: number | null;
+  episode_type: string;
+  synopsis: string;
+  thumbnail: string;
+  quality: string;
+  duration_minutes: number;
+  dubbed_studio: string;
+  dubbed_date: string;
+  aired_date: string;
+  telegram_url: string;
+  source: string;
+  language: string;
+  tags: string;
+  views: number;
+  featured: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface MemQualityItem {
+  id: number;
+  release_id: number;
+  label: string;
+  url: string;
+  file_size_mb: number | null;
+  position: number;
+}
+
+let memoryDriverInstance: Driver | null = null;
+
+export function getMemoryDriver(): Driver {
+  if (memoryDriverInstance) return memoryDriverInstance;
+
+  const memSettings = new Map<string, string>(Object.entries(SETTINGS_SEED));
+  memSettings.set("logo_url", FALLBACK_LOGO_URL);
+
+  const memCategories: MemCategoryItem[] = CATEGORY_SEED.map((cat, idx) => ({
+    id: idx + 1,
+    name: cat.name,
+    name_alt: cat.name_alt,
+    slug: cat.slug,
+    description: cat.description,
+    accent: cat.accent,
+    sort_order: cat.sort_order,
+    created_at: "2024-01-01 00:00:00",
+  }));
+
+  const memQualities: MemQualityItem[] = [];
+  let qId = 1;
+
+  const memReleases: MemReleaseItem[] = seedReleases.map((rel, idx) => {
+    const relId = idx + 1;
+    const catId = categoryIdFor(rel.category);
+    rel.links.forEach((link, pos) => {
+      memQualities.push({
+        id: qId++,
+        release_id: relId,
+        label: link.label,
+        url: link.url,
+        file_size_mb: link.size,
+        position: pos,
+      });
+    });
+
+    const day = String(Math.min(28, idx + 1)).padStart(2, "0");
+    return {
+      id: relId,
+      category_id: catId,
+      code: rel.code,
+      title: rel.title,
+      subtitle: rel.subtitle,
+      slug: rel.slug,
+      season: rel.season,
+      episode_number: rel.episode_number,
+      episode_type: rel.episode_type,
+      synopsis: rel.synopsis,
+      thumbnail: rel.thumbnail,
+      quality: rel.quality,
+      duration_minutes: rel.duration_minutes,
+      dubbed_studio: rel.dubbed_studio,
+      dubbed_date: rel.dubbed_date,
+      aired_date: rel.aired_date,
+      telegram_url: "https://t.me/ben10sl",
+      source: "Cartoon Network (Sinhala dub)",
+      language: "sinhala",
+      tags: rel.tags,
+      views: rel.views,
+      featured: rel.featured ? 1 : 0,
+      status: "published",
+      created_at: `2024-01-${day} 12:00:00`,
+      updated_at: `2024-01-${day} 12:00:00`,
+    };
+  });
+
+  function enrichRelease(r: MemReleaseItem) {
+    const cat = memCategories.find((c) => c.id === r.category_id);
+    const linkCount = memQualities.filter((q) => q.release_id === r.id).length;
+    return {
+      ...r,
+      category_name: cat?.name ?? "",
+      category_name_alt: cat?.name_alt ?? "",
+      category_slug: cat?.slug ?? "",
+      category_accent: cat?.accent ?? "#39FF14",
+      link_count: linkCount,
+    };
+  }
+
+  function executeQuery<T>(text: string, params: unknown[] = []): T[] {
+    const sql = text.trim();
+
+    // 1. Settings queries
+    if (/SELECT key,\s*value FROM settings/i.test(sql)) {
+      return Array.from(memSettings.entries()).map(([key, value]) => ({ key, value })) as unknown as T[];
+    }
+    if (/SELECT value FROM settings WHERE key = \$1/i.test(sql)) {
+      const key = String(params[0] ?? "");
+      const val = memSettings.get(key);
+      return (val !== undefined ? [{ value: val }] : []) as unknown as T[];
+    }
+    if (/UPDATE settings SET value = \$1 WHERE key = 'logo_url'/i.test(sql)) {
+      if (params[0]) memSettings.set("logo_url", String(params[0]));
+      return [] as unknown as T[];
+    }
+    if (/INSERT INTO settings \(key,\s*value\)/i.test(sql)) {
+      const key = String(params[0] ?? "");
+      const val = String(params[1] ?? "");
+      if (key) memSettings.set(key, val);
+      return [] as unknown as T[];
+    }
+
+    // 2. Categories queries
+    if (/SELECT COUNT\(\*\)::int AS c FROM categories/i.test(sql)) {
+      return [{ c: memCategories.length }] as unknown as T[];
+    }
+    if (/FROM categories c/i.test(sql)) {
+      if (/WHERE c\.slug = \$1/i.test(sql)) {
+        const slug = String(params[0] ?? "");
+        const cat = memCategories.find((c) => c.slug === slug);
+        if (!cat) return [] as unknown as T[];
+        const count = memReleases.filter((r) => r.category_id === cat.id && r.status === "published").length;
+        return [{ ...cat, release_count: count }] as unknown as T[];
+      }
+      const list = memCategories
+        .slice()
+        .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+        .map((cat) => {
+          const count = memReleases.filter((r) => r.category_id === cat.id && r.status === "published").length;
+          return { ...cat, release_count: count };
+        });
+      return list as unknown as T[];
+    }
+
+    // 3. Qualities queries
+    if (/SELECT \* FROM qualities WHERE release_id = \$1/i.test(sql)) {
+      const relId = Number(params[0]);
+      const list = memQualities
+        .filter((q) => q.release_id === relId)
+        .sort((a, b) => a.position - b.position || a.id - b.id);
+      return list as unknown as T[];
+    }
+    if (/DELETE FROM qualities WHERE release_id = \$1/i.test(sql)) {
+      const relId = Number(params[0]);
+      for (let i = memQualities.length - 1; i >= 0; i--) {
+        if (memQualities[i].release_id === relId) memQualities.splice(i, 1);
+      }
+      return [] as unknown as T[];
+    }
+
+    // 4. Update release views
+    if (/UPDATE releases SET views = views \+ 1 WHERE id = \$1/i.test(sql)) {
+      const relId = Number(params[0]);
+      const target = memReleases.find((r) => r.id === relId);
+      if (target) target.views += 1;
+      return [] as unknown as T[];
+    }
+
+    // 5. Site stats
+    if (/COUNT\(\*\)::int AS releases/i.test(sql) && /FILTER \(WHERE episode_type = 'episode'\)/i.test(sql)) {
+      const pub = memReleases.filter((r) => r.status === "published");
+      const epCount = pub.filter((r) => r.episode_type === "episode").length;
+      const movCount = pub.filter((r) => r.episode_type === "movie").length;
+      const dubMin = pub.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+      return [
+        {
+          releases: pub.length,
+          episodes: epCount,
+          movies: movCount,
+          dubbed_minutes: dubMin,
+        },
+      ] as unknown as T[];
+    }
+
+    // 6. Admin stats totals
+    if (/SELECT\s+\(SELECT COUNT\(\*\)::int FROM releases\) AS releases/i.test(sql)) {
+      const totalRel = memReleases.length;
+      const pubRel = memReleases.filter((r) => r.status === "published").length;
+      const totalMov = memReleases.filter((r) => r.episode_type === "movie").length;
+      const totalViews = memReleases.reduce((acc, r) => acc + (r.views || 0), 0);
+      return [
+        {
+          releases: totalRel,
+          published: pubRel,
+          categories: memCategories.length,
+          movies: totalMov,
+          views: totalViews,
+          links: memQualities.length,
+        },
+      ] as unknown as T[];
+    }
+
+    // 7. Single release lookup: WHERE r.slug = $1
+    if (/WHERE r\.slug = \$1/i.test(sql)) {
+      const slug = String(params[0] ?? "");
+      const match = memReleases.find((r) => r.slug === slug);
+      if (!match) return [] as unknown as T[];
+      return [enrichRelease(match)] as unknown as T[];
+    }
+
+    // Single release lookup: WHERE r.id = $1
+    if (/WHERE r\.id = \$1/i.test(sql) && !/category_id/i.test(sql)) {
+      const id = Number(params[0]);
+      const match = memReleases.find((r) => r.id === id);
+      if (!match) return [] as unknown as T[];
+      return [enrichRelease(match)] as unknown as T[];
+    }
+
+    // 8. Neighbours query (prev / next episode or related)
+    if (/WHERE r\.category_id = \$1 AND r\.id <> \$2/i.test(sql)) {
+      const catId = Number(params[0]);
+      const skipId = Number(params[1]);
+      const curSeason = Number(params[2]);
+      const curEp = params[3] === null ? 0 : Number(params[3] ?? 0);
+
+      if (/r\.season < \$3/i.test(sql)) {
+        const candidates = memReleases.filter(
+          (r) =>
+            r.category_id === catId &&
+            r.id !== skipId &&
+            (r.season < curSeason || (r.season === curSeason && (r.episode_number ?? 0) < curEp)),
+        );
+        candidates.sort((a, b) => b.season - a.season || (b.episode_number ?? 0) - (a.episode_number ?? 0));
+        return candidates[0] ? ([enrichRelease(candidates[0])] as unknown as T[]) : ([] as unknown as T[]);
+      }
+
+      if (/r\.season > \$3/i.test(sql)) {
+        const candidates = memReleases.filter(
+          (r) =>
+            r.category_id === catId &&
+            r.id !== skipId &&
+            (r.season > curSeason || (r.season === curSeason && (r.episode_number ?? 0) > curEp)),
+        );
+        candidates.sort((a, b) => a.season - b.season || (a.episode_number ?? 0) - (b.episode_number ?? 0));
+        return candidates[0] ? ([enrichRelease(candidates[0])] as unknown as T[]) : ([] as unknown as T[]);
+      }
+
+      if (/ABS\(COALESCE\(r\.episode_number/i.test(sql)) {
+        const limit = Number(params[3] ?? 4);
+        const candidates = memReleases.filter(
+          (r) => r.category_id === catId && r.id !== skipId && r.status === "published",
+        );
+        candidates.sort(
+          (a, b) =>
+            Math.abs((a.episode_number ?? 0) - curEp) - Math.abs((b.episode_number ?? 0) - curEp) ||
+            b.views - a.views,
+        );
+        return candidates.slice(0, limit).map(enrichRelease) as unknown as T[];
+      }
+    }
+
+    // 9. Curated release queries
+    if (/ORDER BY r\.featured DESC,\s*r\.views DESC/i.test(sql)) {
+      const limit = Number(params[0] ?? 5);
+      const list = memReleases
+        .filter((r) => r.status === "published")
+        .sort((a, b) => b.featured - a.featured || b.views - a.views || b.created_at.localeCompare(a.created_at))
+        .slice(0, limit)
+        .map(enrichRelease);
+      return list as unknown as T[];
+    }
+
+    if (/ORDER BY r\.views DESC,\s*r\.id DESC/i.test(sql)) {
+      const limit = Number(params[0] ?? 8);
+      const list = memReleases
+        .filter((r) => r.status === "published")
+        .sort((a, b) => b.views - a.views || b.id - a.id)
+        .slice(0, limit)
+        .map(enrichRelease);
+      return list as unknown as T[];
+    }
+
+    if (/ORDER BY r\.created_at DESC,\s*r\.id DESC/i.test(sql) && !/episode_type = 'movie'/i.test(sql)) {
+      const limit = Number(params[0] ?? 8);
+      const list = memReleases
+        .filter((r) => r.status === "published")
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id)
+        .slice(0, limit)
+        .map(enrichRelease);
+      return list as unknown as T[];
+    }
+
+    if (/episode_type = 'movie'/i.test(sql)) {
+      const limit = Number(params[0] ?? 6);
+      const list = memReleases
+        .filter((r) => r.episode_type === "movie" && r.status === "published")
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, limit)
+        .map(enrichRelease);
+      return list as unknown as T[];
+    }
+
+    // 10. General Releases listing or count
+    if (/FROM releases r/i.test(sql)) {
+      let filtered = memReleases.slice();
+
+      const qParam = params.find(
+        (p) => typeof p === "string" && p.startsWith("%") && p.endsWith("%"),
+      ) as string | undefined;
+
+      if (qParam) {
+        const rawQ = qParam.slice(1, -1).toLowerCase();
+        filtered = filtered.filter(
+          (r) =>
+            r.title.toLowerCase().includes(rawQ) ||
+            r.subtitle.toLowerCase().includes(rawQ) ||
+            r.synopsis.toLowerCase().includes(rawQ) ||
+            r.tags.toLowerCase().includes(rawQ) ||
+            r.code.toLowerCase().includes(rawQ),
+        );
+      }
+
+      for (const p of params) {
+        if (typeof p === "string") {
+          const matchCat = memCategories.find((c) => c.slug === p);
+          if (matchCat && /c\.slug =/i.test(sql)) {
+            filtered = filtered.filter((r) => r.category_id === matchCat.id);
+          }
+          if (["episode", "movie", "special", "short"].includes(p) && /r\.episode_type =/i.test(sql)) {
+            filtered = filtered.filter((r) => r.episode_type === p);
+          }
+          if (["published", "draft"].includes(p) && /r\.status =/i.test(sql)) {
+            filtered = filtered.filter((r) => r.status === p);
+          }
+        }
+      }
+
+      if (/SELECT COUNT\(\*\)::int AS c FROM releases/i.test(sql)) {
+        return [{ c: filtered.length }] as unknown as T[];
+      }
+
+      if (/r\.created_at DESC/i.test(sql)) {
+        filtered.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
+      } else if (/r\.created_at ASC/i.test(sql)) {
+        filtered.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id - b.id);
+      } else if (/r\.views DESC/i.test(sql)) {
+        filtered.sort((a, b) => b.views - a.views || b.id - a.id);
+      } else if (/r\.subtitle ASC/i.test(sql)) {
+        filtered.sort((a, b) => a.subtitle.localeCompare(b.subtitle));
+      } else if (/r\.season ASC/i.test(sql)) {
+        filtered.sort((a, b) => a.season - b.season || (a.episode_number ?? 0) - (b.episode_number ?? 0));
+      }
+
+      const limitOffsetMatch = /LIMIT \$(\d+)\s+OFFSET \$(\d+)/i.exec(sql);
+      if (limitOffsetMatch) {
+        const limIdx = Number(limitOffsetMatch[1]) - 1;
+        const offIdx = Number(limitOffsetMatch[2]) - 1;
+        const limitVal = Number(params[limIdx] ?? 12);
+        const offsetVal = Number(params[offIdx] ?? 0);
+        filtered = filtered.slice(offsetVal, offsetVal + limitVal);
+      }
+
+      return filtered.map(enrichRelease) as unknown as T[];
+    }
+
+    // Default safe response
+    return [] as unknown as T[];
+  }
+
+  memoryDriverInstance = {
+    label: "memory",
+    async query<T>(text: string, params: unknown[]): Promise<T[]> {
+      return executeQuery<T>(text, params);
+    },
+    async transaction(statements: Statement[]): Promise<void> {
+      for (const st of statements) {
+        executeQuery(st.text, st.params ?? []);
+      }
+    },
+  };
+
+  return memoryDriverInstance;
+}
+

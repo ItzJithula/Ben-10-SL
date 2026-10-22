@@ -5,25 +5,23 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { cx } from "@/lib/utils";
-import { ALIENS, AlienSilhouette, alienById, type Alien } from "./aliens";
+import { ALIENS, AlienSilhouette, type Alien } from "./aliens";
 
 /**
  * The Omnitrix Watch.
  *
  * Interactivity:
- *  1. Spin the watch dial (by dragging, scrolling, using arrow keys, or using the spin buttons).
- *     The aliens rotate inside the watch face, and the active alien is projected holographically in the central core.
- *  2. Clicking the watch face (or core) triggers a green transformation flash, removes the watch,
- *     and replaces it with the full photo of the selected alien.
- *  3. Clicking anywhere on the transformed photo restores the Omnitrix watch face.
+ *  1. Spin the watch dial (by dragging, mouse wheel, or using the spin buttons).
+ *     The alien glyph in the central holographic chamber rotates to display the selected alien.
+ *  2. Clicking the watch transforms it: the watch is replaced by a full, non-rounded photo of the alien.
+ *  3. Clicking anywhere on the alien photo restores the Omnitrix watch face.
  */
 
 const SLOTS = ALIENS.length;
 const STEP = 360 / SLOTS; // 36° per alien slot
 const VIEW = 420;
 const CENTRE = VIEW / 2;
-const DIAL_R = 138; // Radius where alien badges sit inside the watch dial
-const BADGE_R = 21;
+const DIAL_R = 142; // Radius of the rotating dial track
 const STORE_KEY = "b10sl:omnitrix";
 
 export default function OmnitrixWatch({
@@ -150,7 +148,6 @@ export default function OmnitrixWatch({
       state.lastAngle = angle;
       travelledRef.current += Math.abs(delta);
       applyRotation(rotRef.current + delta);
-      // update active alien live as dial turns
       const idx = indexForRotation(rotRef.current);
       if (idx !== activeIndex) {
         setActiveIndex(idx);
@@ -201,7 +198,7 @@ export default function OmnitrixWatch({
 
   const handleWatchClick = () => {
     if (!interactive) return;
-    if (travelledRef.current > 6) return; // ignore drags
+    if (travelledRef.current > 6) return;
     triggerTransform();
   };
 
@@ -268,7 +265,7 @@ export default function OmnitrixWatch({
         <div
           className="pointer-events-none fixed inset-0 z-50 animate-transform-flash"
           style={{
-            background: `radial-gradient(circle at center, ${accent}cc 0%, rgba(57,255,20,0.4) 40%, transparent 75%)`,
+            background: `radial-gradient(circle at center, ${accent}dd 0%, rgba(57,255,20,0.45) 40%, transparent 75%)`,
           }}
         />
       )}
@@ -285,13 +282,13 @@ export default function OmnitrixWatch({
         <AnimatePresence mode="wait">
           {!isTransformed ? (
             /* ======================================================= */
-            /* 1. REDESIGNED OMNITRIX WATCH FACE                       */
+            /* 1. REDESIGNED OMNITRIX WATCH FACE (NO SMALL ICONS)      */
             /* ======================================================= */
             <motion.div
               key="omnitrix-watch"
-              initial={{ scale: 0.85, opacity: 0 }}
+              initial={{ scale: 0.88, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.85, opacity: 0, rotate: 15 }}
+              exit={{ scale: 0.88, opacity: 0, rotate: 12 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               ref={wrapRef}
               className={cx(
@@ -413,106 +410,77 @@ export default function OmnitrixWatch({
                   fill="#ffffff"
                 />
 
-                {/* 5. Rotating Alien Dial Ring (Spins with user input) */}
+                {/* 5. Clean Rotating Dial Track (NO SMALL ICONS - clean tech dial markings only) */}
                 <g ref={dialRef}>
                   {/* Subtle track ring */}
-                  <circle cx={CENTRE} cy={CENTRE} r={DIAL_R} fill="none" stroke="rgba(57,255,20,0.18)" strokeWidth="2" strokeDasharray="4 6" />
+                  <circle cx={CENTRE} cy={CENTRE} r={DIAL_R} fill="none" stroke="rgba(57,255,20,0.3)" strokeWidth="2" strokeDasharray="6 8" />
 
-                  {/* 10 Alien Badges situated along the dial ring */}
-                  {ALIENS.map((alien, index) => {
+                  {/* 10 clean mechanical dial ticks representing alien positions */}
+                  {Array.from({ length: SLOTS }).map((_, index) => {
                     const isSelected = activeIndex === index;
                     return (
-                      <g key={alien.id} transform={`rotate(${index * STEP} ${CENTRE} ${CENTRE})`}>
-                        <g
-                          transform={`translate(0, ${-DIAL_R})`}
-                          className="cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (travelledRef.current > 6) return;
-                            selectAlien(index);
-                          }}
-                        >
-                          {/* Badge Circle */}
-                          <circle
-                            r={BADGE_R}
-                            fill={isSelected ? "#092415" : "#020a05"}
-                            stroke={isSelected ? "#39ff14" : "rgba(57, 255, 20, 0.4)"}
-                            strokeWidth={isSelected ? 3 : 1.5}
-                          />
-
-                          {/* Selected alien pulse ring */}
-                          {isSelected && (
-                            <circle
-                              r={BADGE_R + 4}
-                              fill="none"
-                              stroke="#39ff14"
-                              strokeWidth="1.5"
-                              opacity="0.8"
-                              filter="url(#omniGreenGlow)"
-                            />
-                          )}
-
-                          {/* Alien silhouette icon */}
-                          <g transform="translate(-14, -14) scale(0.4375)">
-                            <AlienSilhouette
-                              alien={alien}
-                              accent={isSelected ? "#ffffff" : "#39ff14"}
-                            />
-                          </g>
-                        </g>
+                      <g key={index} transform={`rotate(${index * STEP} ${CENTRE} ${CENTRE})`}>
+                        <rect
+                          x={CENTRE - (isSelected ? 3.5 : 2)}
+                          y={CENTRE - DIAL_R - (isSelected ? 10 : 6)}
+                          width={isSelected ? 7 : 4}
+                          height={isSelected ? 20 : 12}
+                          rx={2}
+                          fill={isSelected ? "#39ff14" : "#196614"}
+                          filter={isSelected ? "url(#omniGreenGlow)" : undefined}
+                          opacity={isSelected ? 1 : 0.65}
+                        />
                       </g>
                     );
                   })}
                 </g>
 
-                {/* 6. Central Holographic Core (Alien Display Inside the Watch) */}
-                {/* Outer Core Ring */}
-                <circle cx={CENTRE} cy={CENTRE} r={92} fill="#020905" stroke="#1f422e" strokeWidth="4" />
+                {/* 6. Central Holographic Core (Alien Display Inside the Watch Face) */}
+                <circle cx={CENTRE} cy={CENTRE} r={104} fill="#020905" stroke="#1f422e" strokeWidth="4" />
                 <circle
                   cx={CENTRE}
                   cy={CENTRE}
-                  r={88}
+                  r={100}
                   fill="url(#holoLens)"
                   stroke={accent}
-                  strokeWidth="2.5"
+                  strokeWidth="3"
                   filter="url(#omniGreenGlow)"
-                  opacity="0.85"
+                  opacity="0.9"
                 />
 
                 {/* Holographic Radar / Tech Scan Grid */}
-                <circle cx={CENTRE} cy={CENTRE} r={65} fill="none" stroke="rgba(57,255,20,0.3)" strokeWidth="1" strokeDasharray="3 4" />
-                <circle cx={CENTRE} cy={CENTRE} r={40} fill="none" stroke="rgba(57,255,20,0.25)" strokeWidth="1" />
-                <line x1={CENTRE - 70} y1={CENTRE} x2={CENTRE + 70} y2={CENTRE} stroke="rgba(57,255,20,0.2)" strokeWidth="1" />
-                <line x1={CENTRE} y1={CENTRE - 70} x2={CENTRE} y2={CENTRE + 70} stroke="rgba(57,255,20,0.2)" strokeWidth="1" />
+                <circle cx={CENTRE} cy={CENTRE} r={74} fill="none" stroke="rgba(57,255,20,0.3)" strokeWidth="1" strokeDasharray="3 4" />
+                <circle cx={CENTRE} cy={CENTRE} r={46} fill="none" stroke="rgba(57,255,20,0.25)" strokeWidth="1" />
+                <line x1={CENTRE - 80} y1={CENTRE} x2={CENTRE + 80} y2={CENTRE} stroke="rgba(57,255,20,0.2)" strokeWidth="1" />
+                <line x1={CENTRE} y1={CENTRE - 80} x2={CENTRE} y2={CENTRE + 80} stroke="rgba(57,255,20,0.2)" strokeWidth="1" />
 
                 {/* PROJECTED ALIEN INSIDE THE WATCH FACE */}
                 <g filter="url(#omniGreenGlow)" className="transition-all duration-300">
-                  {/* Central Alien Holographic Silhouette */}
-                  <g transform={`translate(${CENTRE - 46}, ${CENTRE - 46}) scale(1.4375)`}>
+                  <g transform={`translate(${CENTRE - 52}, ${CENTRE - 52}) scale(1.625)`}>
                     <AlienSilhouette alien={activeAlien} accent="#ffffff" />
                   </g>
                 </g>
 
                 {/* Holographic Glass Glare / Arc */}
                 <path
-                  d={`M ${CENTRE - 60} ${CENTRE - 55} A 82 82 0 0 1 ${CENTRE + 60} ${CENTRE - 55}`}
+                  d={`M ${CENTRE - 70} ${CENTRE - 65} A 95 95 0 0 1 ${CENTRE + 70} ${CENTRE - 65}`}
                   fill="none"
                   stroke="rgba(255, 255, 255, 0.45)"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
 
-                {/* Interactive Click Indicator Label inside core */}
+                {/* Interactive Click Indicator Label */}
                 <text
                   x={CENTRE}
-                  y={CENTRE + 62}
+                  y={CENTRE + 72}
                   textAnchor="middle"
                   fill="#39ff14"
-                  fontSize="10"
+                  fontSize="11"
                   fontFamily="monospace"
                   fontWeight="bold"
-                  letterSpacing="2"
-                  opacity="0.85"
+                  letterSpacing="2.5"
+                  opacity="0.9"
                 >
                   CLICK TO TRANSFORM
                 </text>
@@ -521,36 +489,36 @@ export default function OmnitrixWatch({
               {/* Spin Dial Tooltip Overlay */}
               <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-center">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-omni-400/40 bg-void-950/80 px-3 py-1 font-display text-[0.65rem] font-bold tracking-wider text-omni-300 uppercase shadow-omni backdrop-blur-md">
-                  ⟲ Spin Dial to Cycle ⟳
+                  ⟲ Spin Dial to Cycle Aliens ⟳
                 </span>
               </div>
             </motion.div>
           ) : (
             /* ======================================================= */
-            /* 2. TRANSFORMED STATE: FULL PHOTO REPLACING THE WATCH     */
+            /* 2. TRANSFORMED STATE: NON-ROUNDED FULL PHOTO            */
             /* ======================================================= */
             <motion.div
               key="alien-photo"
-              initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              exit={{ scale: 0.6, opacity: 0, rotate: 20 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               onClick={restoreWatch}
-              className="group relative h-full w-full cursor-pointer overflow-hidden rounded-full border-4 shadow-omni-lg"
+              className="group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl border-4 shadow-omni-lg"
               style={{
                 borderColor: accent,
-                boxShadow: `0 0 35px -5px ${accent}, inset 0 0 25px rgba(0,0,0,0.8)`,
+                boxShadow: `0 0 35px -5px ${accent}, inset 0 0 30px rgba(0,0,0,0.8)`,
               }}
-              title="Click anywhere to restore the Omnitrix watch"
+              title="Click photo to restore watch"
             >
-              {/* Full Action Photo of the Alien */}
+              {/* Full Action Photo of the Alien (Non-rounded, fills the frame) */}
               <Image
                 src={activeAlien.image}
                 alt={activeAlien.name}
                 fill
                 priority
-                sizes="(max-width: 768px) 300px, 380px"
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                sizes="(max-width: 768px) 320px, 400px"
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
               />
 
               {/* Cinematic Vignette & Glow Overlays */}
@@ -565,9 +533,9 @@ export default function OmnitrixWatch({
                 }}
               />
 
-              {/* Pulsing energy border */}
+              {/* Pulsing energy border (Non-rounded, matching outer frame) */}
               <span
-                className="pointer-events-none absolute inset-0 rounded-full border-2 animate-pulse-ring"
+                className="pointer-events-none absolute inset-0 rounded-2xl border-2 animate-pulse-ring"
                 style={{ borderColor: accent }}
               />
 
@@ -584,29 +552,20 @@ export default function OmnitrixWatch({
                   {activeAlien.species}
                 </span>
 
-                <h3 className="mt-1 font-display text-xl font-black tracking-widest text-white uppercase text-glow sm:text-2xl">
+                <h3 className="mt-1 font-display text-2xl font-black tracking-widest text-white uppercase text-glow sm:text-3xl">
                   {activeAlien.name}
                 </h3>
 
-                <p className="mt-1 line-clamp-1 max-w-[85%] text-[0.72rem] font-medium text-void-100">
+                <p className="mt-1 line-clamp-2 max-w-[90%] text-xs font-medium text-void-100">
                   {activeAlien.powers}
                 </p>
-
-                {/* Click to restore watch prompt */}
-                <div className="mt-2.5 flex items-center gap-1.5 rounded-full border border-omni-400/50 bg-omni-400/15 px-3 py-1 font-display text-[0.65rem] font-black tracking-[0.18em] text-omni-300 uppercase shadow-omni transition-transform duration-300 group-hover:scale-105">
-                  <svg viewBox="0 0 24 24" className="h-3 w-3 fill-none stroke-current stroke-2">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                  Click to Restore Watch
-                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Control Bar: Spin Controls & Alien Status */}
+      {/* Control Bar: Spin Controls & Status (No Restore Button) */}
       {interactive && (
         <div className="flex flex-col items-center gap-2">
           {!isTransformed ? (
@@ -637,17 +596,9 @@ export default function OmnitrixWatch({
                 Spin ▶
               </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={restoreWatch}
-              className="rounded-full border border-omni-400/60 bg-omni-400/10 px-6 py-2 font-display text-xs font-black tracking-wider text-omni-300 uppercase transition-colors hover:bg-omni-400/20 active:scale-95"
-            >
-              ↺ Click Photo to Restore Omnitrix
-            </button>
-          )}
+          ) : null}
 
-          {/* Active Alien Power Indicator */}
+          {/* Active Alien Indicator */}
           <p className="text-[0.7rem] font-bold tracking-[0.2em] text-void-300 uppercase">
             {activeAlien.name} · {activeAlien.species} ({activeIndex + 1}/{SLOTS})
           </p>
