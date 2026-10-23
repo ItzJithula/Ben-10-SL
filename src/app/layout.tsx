@@ -8,7 +8,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import SmoothScroll from "@/components/SmoothScroll";
 import { listCategories } from "@/lib/queries";
-import { getSettings } from "@/lib/settings";
+import { DEFAULT_SETTINGS, getSettings } from "@/lib/settings";
 
 // Everything is database driven — admin changes show up immediately.
 export const dynamic = "force-dynamic";
@@ -20,16 +20,28 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
+  let settings = DEFAULT_SETTINGS;
+  try {
+    settings = await getSettings();
+  } catch {
+    // fallback to defaults
+  }
+
+  let baseUrl = "http://localhost:3000";
+  try {
+    const raw = process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    baseUrl = new URL(raw).origin;
+  } catch {
+    baseUrl = "http://localhost:3000";
+  }
+
   return {
-    metadataBase: new URL(
-      process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
-    ),
+    metadataBase: new URL(baseUrl),
     title: {
-      default: `${settings.site_name} — ${settings.site_tagline}`,
-      template: `%s · ${settings.site_name}`,
+      default: `${settings.site_name || "Ben 10 SL"} — ${settings.site_tagline || "Sinhala Dubbed Episodes"}`,
+      template: `%s · ${settings.site_name || "Ben 10 SL"}`,
     },
-    description: settings.site_description,
+    description: settings.site_description || "Ben 10 Sinhala Dubbed Episodes",
     keywords: [
       "Ben 10 Sinhala",
       "Ben 10 Sinhala dubbed",
@@ -39,8 +51,8 @@ export async function generateMetadata(): Promise<Metadata> {
     ],
     icons: { icon: "/favicon.ico" },
     openGraph: {
-      title: `${settings.site_name} — ${settings.site_tagline}`,
-      description: settings.site_description,
+      title: `${settings.site_name || "Ben 10 SL"} — ${settings.site_tagline || "Sinhala Dubbed Episodes"}`,
+      description: settings.site_description || "Ben 10 Sinhala Dubbed Episodes",
       type: "website",
       images: [settings.hero_image || "/art/hero-alien-tech.jpg"],
     },
@@ -48,7 +60,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, categories] = await Promise.all([getSettings(), listCategories()]);
+  const [settingsResult, categoriesResult] = await Promise.allSettled([getSettings(), listCategories()]);
+  const settings = settingsResult.status === "fulfilled" ? settingsResult.value : DEFAULT_SETTINGS;
+  const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
 
   return (
     <html lang="en" suppressHydrationWarning>

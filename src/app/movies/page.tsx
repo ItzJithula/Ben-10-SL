@@ -6,7 +6,7 @@ import Reveal from "@/components/Reveal";
 import SectionHeading from "@/components/SectionHeading";
 import TelegramCta from "@/components/TelegramCta";
 import { listReleases } from "@/lib/queries";
-import { getSettings } from "@/lib/settings";
+import { DEFAULT_SETTINGS, getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Movies & Specials",
@@ -21,10 +21,18 @@ function first(value: string | string[] | undefined) {
 
 export default async function MoviesPage({ searchParams }: { searchParams: SearchParams }) {
   const query = await searchParams;
-  const settings = await getSettings();
   const page = Number.parseInt(first(query.page) ?? "1", 10) || 1;
 
-  const result = await listReleases({ type: "movie", page, perPage: 12, sort: "newest" });
+  const [settingsResult, releasesResult] = await Promise.allSettled([
+    getSettings(),
+    listReleases({ type: "movie", page, perPage: 12, sort: "newest" }),
+  ]);
+
+  const settings = settingsResult.status === "fulfilled" ? settingsResult.value : DEFAULT_SETTINGS;
+  const result =
+    releasesResult.status === "fulfilled"
+      ? releasesResult.value
+      : { items: [], total: 0, page: 1, perPage: 12, pages: 1 };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">

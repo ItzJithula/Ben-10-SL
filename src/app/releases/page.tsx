@@ -21,7 +21,6 @@ function first(value: string | string[] | undefined): string | undefined {
 
 export default async function ReleasesPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const categories = await listCategories();
 
   const page = Number.parseInt(first(params.page) ?? "1", 10) || 1;
   const filters = {
@@ -33,7 +32,16 @@ export default async function ReleasesPage({ searchParams }: { searchParams: Sea
     perPage: 12,
   };
 
-  const result = await listReleases(filters);
+  const [categoriesResult, releasesResult] = await Promise.allSettled([
+    listCategories(),
+    listReleases(filters),
+  ]);
+
+  const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
+  const result =
+    releasesResult.status === "fulfilled"
+      ? releasesResult.value
+      : { items: [], total: 0, page: 1, perPage: 12, pages: 1 };
 
   const makeHref = (targetPage: number) => {
     const next = new URLSearchParams();

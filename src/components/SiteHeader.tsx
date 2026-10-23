@@ -19,11 +19,11 @@ interface HeaderCategory {
 }
 
 export default function SiteHeader({
-  settings,
-  categories,
+  settings = {},
+  categories = [],
 }: {
-  settings: Record<string, string>;
-  categories: CategoryWithCount[];
+  settings?: Record<string, string>;
+  categories?: CategoryWithCount[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -49,7 +49,7 @@ export default function SiteHeader({
     setSearchOpen(false);
   }, [pathname]);
 
-  const menu: HeaderCategory[] = categories.map((category) => ({
+  const menu: HeaderCategory[] = (categories || []).map((category) => ({
     slug: category.slug,
     name: category.name,
     name_alt: category.name_alt,

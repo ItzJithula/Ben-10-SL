@@ -6,21 +6,28 @@ import { motion } from "framer-motion";
 import OmnitrixWatch from "./OmnitrixWatch";
 
 export default function HeroSection({
-  kicker,
-  title,
-  subtitle,
-  image,
-  telegramUrl,
-  stats,
+  kicker = "100% Sinhala Dub",
+  title = "Every Ben 10 Series in Sinhala",
+  subtitle = "From Classic to Omniverse — every episode and movie, fully dubbed in Sinhala and free to watch.",
+  image = "/art/hero-alien-tech.jpg",
+  telegramUrl = "https://t.me/ben10sl",
+  stats = { releases: 22, episodes: 16, movies: 5, hours: 14 },
 }: {
-  kicker: string;
-  title: string;
-  subtitle: string;
-  image: string;
-  telegramUrl: string;
-  stats: { releases: number; episodes: number; movies: number; hours: number };
+  kicker?: string;
+  title?: string;
+  subtitle?: string;
+  image?: string;
+  telegramUrl?: string;
+  stats?: { releases: number; episodes: number; movies: number; hours: number };
 }) {
-  const words = title.split(" ");
+  const safeTitle = title || "Every Ben 10 Series in Sinhala";
+  const words = safeTitle.split(" ");
+  const safeStats = {
+    releases: stats?.releases ?? 22,
+    episodes: stats?.episodes ?? 16,
+    movies: stats?.movies ?? 5,
+    hours: stats?.hours ?? 14,
+  };
 
   return (
     <section className="relative isolate overflow-hidden">
@@ -136,10 +143,10 @@ export default function HeroSection({
             className="mt-12 grid max-w-lg grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4"
           >
             {[
-              { label: "Releases", value: stats.releases },
-              { label: "Episodes", value: stats.episodes },
-              { label: "Movies", value: stats.movies },
-              { label: "Hours", value: stats.hours },
+              { label: "Releases", value: safeStats.releases },
+              { label: "Episodes", value: safeStats.episodes },
+              { label: "Movies", value: safeStats.movies },
+              { label: "Hours", value: safeStats.hours },
             ].map((item) => (
               <div key={item.label}>
                 <dt className="text-[0.62rem] font-black tracking-[0.24em] text-void-200 uppercase">

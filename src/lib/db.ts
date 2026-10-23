@@ -255,6 +255,9 @@ function driver(): Promise<Driver> {
 
     if (url) {
       pending = isNeonHost(url) ? createNeonDriver(url) : createPgDriver(url);
+    } else if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      // Vercel serverless environment without DATABASE_URL: use in-memory driver directly
+      pending = Promise.resolve(getMemoryDriver());
     } else {
       console.warn(
         "[Ben 10 SL] DATABASE_URL is not set — using the embedded local PostgreSQL (./data/pglite).",
@@ -277,7 +280,15 @@ function driver(): Promise<Driver> {
 /** Resolves the driver and makes sure the schema exists (once per process). */
 async function ready(): Promise<Driver> {
   try {
+    const url = connectionString();
+    if (!url && (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)) {
+      return getMemoryDriver();
+    }
+
     const active = await driver();
+    if (active.label === "memory") {
+      return active;
+    }
 
     globalForDb.__ben10slReady ??= new WeakMap();
     let initialised = globalForDb.__ben10slReady.get(active);
@@ -293,27 +304,13 @@ async function ready(): Promise<Driver> {
       await initialised;
       return active;
     } catch (error) {
-      // The Neon HTTP transport can fail even with a valid connection string
-      // (odd pooler URLs, proxies, protocol quirks) while plain TCP to the same
-      // database works. Fall back once to node-postgres — same data, other road.
-      const url = connectionString();
-      if (active.label === "neon" && url) {
-        try {
-          logFailure("Neon HTTP driver failed — retrying over TCP with node-postgres", error);
-          const fallback = await createPgDriver(url);
-          globalForDb.__ben10slDriver = Promise.resolve(fallback);
-          await ready();
-          return fallback;
-        } catch (fallbackError) {
-          logFailure("Postgres TCP fallback failed — using in-memory driver", fallbackError);
-          return getMemoryDriver();
-        }
-      }
       logFailure("database ready failed, falling back to in-memory driver", error);
+      globalForDb.__ben10slDriver = Promise.resolve(getMemoryDriver());
       return getMemoryDriver();
     }
   } catch (err) {
     logFailure("driver resolution failed, falling back to in-memory driver", err);
+    globalForDb.__ben10slDriver = Promise.resolve(getMemoryDriver());
     return getMemoryDriver();
   }
 }
@@ -332,7 +329,12 @@ export async function query<T = Record<string, unknown>>(
     return await active.query<T>(text, params);
   } catch (error) {
     logFailure(`query failed on active driver, executing in memory fallback: ${text.slice(0, 80)}`, error);
-    return getMemoryDriver().query<T>(text, params);
+    try {
+      return await getMemoryDriver().query<T>(text, params);
+    } catch (memError) {
+      logFailure("memory driver query failed", memError);
+      return [];
+    }
   }
 }
 
@@ -1179,11 +1181,17 @@ function seedStatements(): Statement[] {
   // move the identity sequences past the seeded ids so admin-created rows continue cleanly
   for (const table of ["categories", "releases", "qualities"]) {
     statements.push({
-      text: `SELECT setval(
-               pg_get_serial_sequence('${table}', 'id'),
-               (SELECT COALESCE(MAX(id), 1) FROM ${table}),
-               true
-             )`,
+      text: `DO $$
+             DECLARE
+               seq text;
+             BEGIN
+               seq := pg_get_serial_sequence('${table}', 'id');
+               IF seq IS NOT NULL THEN
+                 PERFORM setval(seq, COALESCE((SELECT MAX(id) FROM ${table}), 1), true);
+               END IF;
+             EXCEPTION WHEN OTHERS THEN
+               NULL;
+             END $$;`,
     });
   }
 

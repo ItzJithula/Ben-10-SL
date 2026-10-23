@@ -5,11 +5,11 @@ import type { CategoryWithCount } from "@/lib/types";
 import { formatDateLong } from "@/lib/utils";
 
 export default function SiteFooter({
-  settings,
-  categories,
+  settings = {},
+  categories = [],
 }: {
-  settings: Record<string, string>;
-  categories: CategoryWithCount[];
+  settings?: Record<string, string>;
+  categories?: CategoryWithCount[];
 }) {
   const year = new Date().getFullYear();
 
@@ -51,7 +51,7 @@ export default function SiteFooter({
               Collections
             </h3>
             <ul className="space-y-2.5 text-sm">
-              {categories.map((category) => (
+              {(categories || []).map((category) => (
                 <li key={category.slug}>
                   <Link
                     href={`/category/${category.slug}`}

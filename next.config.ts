@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: process.env.STANDALONE ? "standalone" : undefined,
   // The Neon driver stays external (server-only, never bundled for the browser),
   // and the embedded local database is a WASM module that must not be bundled.
   serverExternalPackages: ["@neondatabase/serverless", "@electric-sql/pglite"],

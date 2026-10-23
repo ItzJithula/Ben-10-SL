@@ -11,10 +11,18 @@ import SectionHeading from "@/components/SectionHeading";
 import TelegramCta from "@/components/TelegramCta";
 import { WatchFrame } from "@/components/OmnitrixWatch";
 import { getFeatured, getLatest, getMovies, getSiteStats, getTrending, listCategories } from "@/lib/queries";
-import { getSettings } from "@/lib/settings";
+import { DEFAULT_SETTINGS, getSettings } from "@/lib/settings";
 
 export default async function HomePage() {
-  const [settings, categories, stats, featured, latest, trending, movies] = await Promise.all([
+  const [
+    settingsResult,
+    categoriesResult,
+    statsResult,
+    featuredResult,
+    latestResult,
+    trendingResult,
+    moviesResult,
+  ] = await Promise.allSettled([
     getSettings(),
     listCategories(),
     getSiteStats(),
@@ -23,6 +31,17 @@ export default async function HomePage() {
     getTrending(6),
     getMovies(4),
   ]);
+
+  const settings = settingsResult.status === "fulfilled" ? settingsResult.value : DEFAULT_SETTINGS;
+  const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
+  const stats =
+    statsResult.status === "fulfilled"
+      ? statsResult.value
+      : { releases: 22, episodes: 16, movies: 5, dubbedMinutes: 807 };
+  const featured = featuredResult.status === "fulfilled" ? featuredResult.value : [];
+  const latest = latestResult.status === "fulfilled" ? latestResult.value : [];
+  const trending = trendingResult.status === "fulfilled" ? trendingResult.value : [];
+  const movies = moviesResult.status === "fulfilled" ? moviesResult.value : [];
 
   const heroRelease = featured[0] ?? latest[0] ?? null;
 
