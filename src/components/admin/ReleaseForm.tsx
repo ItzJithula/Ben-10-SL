@@ -276,6 +276,19 @@ export default function ReleaseForm({
               placeholder="https://t.me/…"
             />
           </Field>
+
+          <Field
+            label="Direct Video URL (Video.js Player)"
+            hint="direct .mp4, .m3u8 (HLS), or stream link for the online player"
+            className="sm:col-span-2"
+          >
+            <input
+              name="video_url"
+              defaultValue={release?.video_url ?? ""}
+              className={inputClass}
+              placeholder="https://example.com/stream/episode-1.mp4"
+            />
+          </Field>
         </div>
       </section>
 

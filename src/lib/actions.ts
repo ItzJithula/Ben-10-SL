@@ -153,6 +153,7 @@ interface ReleasePayload {
   dubbed_date: string;
   aired_date: string;
   telegram_url: string;
+  video_url: string;
   source: string;
   tags: string;
   featured: number;
@@ -182,6 +183,7 @@ function releaseStatement(payload: ReleasePayload, id: number) {
     payload.dubbed_date,
     payload.aired_date,
     payload.telegram_url,
+    payload.video_url,
     payload.source,
     payload.tags,
     payload.featured,
@@ -195,19 +197,19 @@ function releaseStatement(payload: ReleasePayload, id: number) {
                    category_id = $1, code = $2, title = $3, subtitle = $4, slug = $5,
                    season = $6, episode_number = $7, episode_type = $8, synopsis = $9,
                    thumbnail = $10, quality = $11, duration_minutes = $12, dubbed_studio = $13,
-                   dubbed_date = $14, aired_date = $15, telegram_url = $16, source = $17,
-                   tags = $18, featured = $19, status = $20, updated_at = ${NOW_SQL}
-                 WHERE id = $21`,
+                   dubbed_date = $14, aired_date = $15, telegram_url = $16, video_url = $17,
+                   source = $18, tags = $19, featured = $20, status = $21, updated_at = ${NOW_SQL}
+                 WHERE id = $22`,
           params: [...values, id],
         }
       : {
           text: `INSERT INTO releases (
                    category_id, code, title, subtitle, slug, season, episode_number, episode_type,
                    synopsis, thumbnail, quality, duration_minutes, dubbed_studio, dubbed_date,
-                   aired_date, telegram_url, source, language, tags, featured, status
+                   aired_date, telegram_url, video_url, source, language, tags, featured, status
                  ) VALUES (
                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                   $15, $16, $17, 'sinhala', $18, $19, $20
+                   $15, $16, $17, $18, 'sinhala', $19, $20, $21
                  )`,
           params: values,
         };
@@ -260,6 +262,7 @@ export async function saveReleaseAction(_prev: ActionState, form: FormData): Pro
       dubbed_date: str(form, "dubbed_date"),
       aired_date: str(form, "aired_date"),
       telegram_url: str(form, "telegram_url"),
+      video_url: str(form, "video_url"),
       source: str(form, "source"),
       tags: str(form, "tags"),
       featured: flag(form, "featured") ? 1 : 0,

@@ -3,10 +3,11 @@ import type { ReleaseWithMeta } from "@/lib/types";
 import { episodeLabel, parseYoutubeId } from "@/lib/utils";
 import { WatchFrame } from "./OmnitrixWatch";
 import Reveal from "./Reveal";
+import VideoPlayer from "./VideoPlayer";
 
 /**
- * Featured slot on the home page. Plays the Sinhala dubbed clip straight from the
- * configured YouTube video and links to the hand-picked release below the fold.
+ * Featured slot on the home page. Plays the Sinhala dubbed clip straight from Video.js
+ * or configured YouTube video and links to the hand-picked release below the fold.
  */
 export default function FeaturedPlayer({
   release,
@@ -15,6 +16,7 @@ export default function FeaturedPlayer({
   release: ReleaseWithMeta | null;
   youtubeUrl: string;
 }) {
+  const directVideo = release?.video_url?.trim();
   const videoId = parseYoutubeId(youtubeUrl);
 
   return (
@@ -22,7 +24,13 @@ export default function FeaturedPlayer({
       <WatchFrame>
         <div className="grid gap-0 lg:grid-cols-[1.55fr_1fr]">
           <div className="relative aspect-video bg-void-950">
-            {videoId ? (
+            {directVideo ? (
+              <VideoPlayer
+                src={directVideo}
+                poster={release?.thumbnail}
+                title={release?.title}
+              />
+            ) : videoId ? (
               <iframe
                 className="h-full w-full"
                 src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&color=white`}

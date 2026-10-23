@@ -259,7 +259,10 @@ export default function OmnitrixWatch({
   const accent = activeAlien.accent || "#39ff14";
 
   return (
-    <div className={cx("relative flex select-none flex-col items-center gap-4", className)}>
+    <div
+      className={cx("relative flex select-none flex-col items-center gap-4 outline-none focus:outline-none", className)}
+      style={{ outline: "none" }}
+    >
       {/* Transformation burst effect */}
       {flash && (
         <div
@@ -272,8 +275,8 @@ export default function OmnitrixWatch({
 
       {/* Main Container - Switches between Watch and Full Photo */}
       <div
-        className="relative flex items-center justify-center"
-        style={{ width: size, height: size }}
+        className="relative flex items-center justify-center outline-none focus:outline-none focus-visible:outline-none border-0"
+        style={{ width: size, height: size, outline: "none" }}
         tabIndex={interactive ? 0 : undefined}
         onKeyDown={onKeyDown}
         role={interactive ? "region" : undefined}
@@ -292,10 +295,11 @@ export default function OmnitrixWatch({
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               ref={wrapRef}
               className={cx(
-                "group relative h-full w-full",
+                "group relative h-full w-full outline-none focus:outline-none focus-visible:outline-none",
                 interactive && "cursor-pointer",
                 dragging && "cursor-grabbing",
               )}
+              style={{ outline: "none" }}
               onPointerDown={onPointerDown}
               onClick={handleWatchClick}
             >
@@ -305,15 +309,8 @@ export default function OmnitrixWatch({
                 style={{ background: `${accent}25` }}
               />
 
-              {/* Pulsing rings */}
-              <span className="pointer-events-none absolute inset-0 rounded-full border border-omni-400/40 animate-pulse-ring" />
-              <span
-                className="pointer-events-none absolute inset-0 rounded-full border border-omni-400/20 animate-pulse-ring"
-                style={{ animationDelay: "1.3s" }}
-              />
-
               {/* High-tech SVG Omnitrix Watch Body */}
-              <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="relative h-full w-full overflow-visible">
+              <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="relative h-full w-full overflow-visible outline-none">
                 <defs>
                   {/* Heavy graphite chassis */}
                   <radialGradient id="omniChassis" cx="50%" cy="32%" r="70%">
@@ -469,86 +466,53 @@ export default function OmnitrixWatch({
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
-
-                {/* Interactive Click Indicator Label */}
-                <text
-                  x={CENTRE}
-                  y={CENTRE + 72}
-                  textAnchor="middle"
-                  fill="#39ff14"
-                  fontSize="10"
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                  letterSpacing="2.5"
-                  opacity="0.9"
-                >
-                  PRESS TO TRANSFORM
-                </text>
               </svg>
             </motion.div>
           ) : (
             /* ======================================================= */
-            /* 2. TRANSFORMED STATE: NON-ROUNDED FULL ALIEN PICKER     */
+            /* 2. TRANSFORMED STATE: FULL BODY ALIEN (NO BOX / NO CARD) */
             /* ======================================================= */
             <motion.div
               key="alien-photo"
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.85, opacity: 0 }}
+              initial={{ scale: 0.85, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0, y: 10 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               onClick={restoreWatch}
-              className="group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl border-4 shadow-omni-lg bg-void-950"
-              style={{
-                borderColor: accent,
-                boxShadow: `0 0 35px -5px ${accent}, inset 0 0 40px rgba(0,0,0,0.9)`,
-              }}
+              className="group relative flex h-full w-full cursor-pointer flex-col items-center justify-center select-none outline-none focus:outline-none"
+              style={{ outline: "none" }}
               title="Click alien to restore Omnitrix"
             >
-              {/* Full background-removed character render */}
-              <div className="relative h-full w-full p-4 flex items-center justify-center">
+              {/* Full standing character - completely uncropped, transparent background */}
+              <div className="relative h-[84%] w-full flex items-center justify-center">
                 <Image
                   src={activeAlien.image}
                   alt={activeAlien.name}
                   fill
                   priority
-                  sizes="(max-width: 768px) 320px, 400px"
-                  className="object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)] transition-transform duration-700 ease-out group-hover:scale-105"
+                  sizes="(max-width: 768px) 340px, 440px"
+                  className="object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.85)] transition-transform duration-500 ease-out group-hover:scale-105"
                 />
               </div>
 
-              {/* Holographic energetic ambient glow */}
+              {/* Holographic ground projection disk under the alien's feet */}
               <div
-                className="pointer-events-none absolute inset-0 opacity-30 mix-blend-color-dodge transition-opacity duration-500 group-hover:opacity-60"
+                className="pointer-events-none -mt-3 h-5 w-3/4 rounded-[100%] blur-md opacity-60 transition-opacity duration-300 group-hover:opacity-90"
                 style={{
-                  background: `radial-gradient(circle at center, ${accent} 0%, transparent 70%)`,
+                  background: `radial-gradient(ellipse at center, ${accent} 0%, rgba(57,255,20,0.4) 40%, transparent 75%)`,
                 }}
               />
 
-              {/* Pulsing energy border */}
-              <span
-                className="pointer-events-none absolute inset-0 rounded-2xl border-2 animate-pulse-ring"
-                style={{ borderColor: accent }}
-              />
-
-              {/* Alien Details Banner overlaying photo */}
-              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-linear-to-t from-void-950 via-void-950/85 to-transparent p-5 text-center pointer-events-none">
-                <span
-                  className="rounded-full px-2.5 py-0.5 text-[0.62rem] font-black tracking-[0.25em] uppercase"
-                  style={{
-                    color: accent,
-                    background: `${accent}22`,
-                    border: `1px solid ${accent}66`,
-                  }}
-                >
-                  {activeAlien.species}
-                </span>
-
-                <h3 className="mt-1 font-display text-2xl font-black tracking-widest text-white uppercase text-glow sm:text-3xl">
+              {/* Clean Alien Details — no dark banner box covering the body */}
+              <div className="mt-1 text-center pointer-events-none">
+                <h3 className="font-display text-xl font-black tracking-widest text-white uppercase text-glow sm:text-2xl">
                   {activeAlien.name}
                 </h3>
-
-                <p className="mt-1 line-clamp-2 max-w-[90%] text-xs font-medium text-void-100">
-                  {activeAlien.powers}
+                <p
+                  className="text-[0.68rem] font-black tracking-[0.22em] uppercase"
+                  style={{ color: accent }}
+                >
+                  {activeAlien.species}
                 </p>
               </div>
             </motion.div>
@@ -557,7 +521,7 @@ export default function OmnitrixWatch({
       </div>
 
       {/* Pure Watch Face — Alien indicator only, no buttons */}
-      {interactive && (
+      {interactive && !isTransformed && (
         <div className="text-center">
           <p className="text-[0.68rem] font-black tracking-[0.22em] text-void-300 uppercase">
             {activeAlien.name} · {activeAlien.species}

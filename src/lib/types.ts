@@ -52,6 +52,7 @@ export interface Release {
   dubbed_date: string;
   aired_date: string;
   telegram_url: string;
+  video_url?: string;
   source: string;
   language: AudioLanguage;
   tags: string;
@@ -109,6 +110,7 @@ export interface ReleaseInput {
   dubbed_date: string;
   aired_date: string;
   telegram_url: string;
+  video_url?: string;
   source: string;
   language: AudioLanguage;
   tags: string;

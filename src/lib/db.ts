@@ -416,6 +416,7 @@ const SCHEMA: Statement[] = [
              dubbed_date      TEXT NOT NULL DEFAULT '',
              aired_date       TEXT NOT NULL DEFAULT '',
              telegram_url     TEXT NOT NULL DEFAULT '',
+             video_url        TEXT NOT NULL DEFAULT '',
              source           TEXT NOT NULL DEFAULT '',
              language         TEXT NOT NULL DEFAULT 'sinhala',
              tags             TEXT NOT NULL DEFAULT '',
@@ -451,6 +452,7 @@ const SCHEMA: Statement[] = [
              ON releases(code) WHERE code <> ''`,
   },
   { text: `CREATE INDEX IF NOT EXISTS idx_qualities_release ON qualities(release_id)` },
+  { text: `ALTER TABLE releases ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT ''` },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -1281,6 +1283,7 @@ interface MemReleaseItem {
   dubbed_date: string;
   aired_date: string;
   telegram_url: string;
+  video_url?: string;
   source: string;
   language: string;
   tags: string;
@@ -1355,6 +1358,7 @@ export function getMemoryDriver(): Driver {
       dubbed_date: rel.dubbed_date,
       aired_date: rel.aired_date,
       telegram_url: "https://t.me/ben10sl",
+      video_url: "",
       source: "Cartoon Network (Sinhala dub)",
       language: "sinhala",
       tags: rel.tags,

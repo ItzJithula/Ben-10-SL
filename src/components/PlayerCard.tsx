@@ -5,13 +5,29 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import type { ReleaseDetail } from "@/lib/types";
 import { cx, formatSize, parseYoutubeId, totalSize } from "@/lib/utils";
+import VideoPlayer from "./VideoPlayer";
 
 /**
  * Player + download panel for a single Sinhala dubbed release.
- * Embeds a YouTube source when one of the links is a YouTube URL,
- * otherwise hands off to Telegram / external mirrors.
+ * Embeds Video.js online video player when a direct video link is provided,
+ * embeds YouTube when a YouTube URL is present,
+ * or hands off to Telegram / external mirrors.
  */
 export default function PlayerCard({ release }: { release: ReleaseDetail }) {
+  const directVideoSource =
+    release.video_url?.trim() ||
+    release.qualities.find((quality) => {
+      const url = quality.url.toLowerCase();
+      return (
+        url.endsWith(".mp4") ||
+        url.endsWith(".m3u8") ||
+        url.endsWith(".webm") ||
+        url.includes(".mp4?") ||
+        url.includes(".m3u8?") ||
+        url.includes("blob:")
+      );
+    })?.url;
+
   const embedSource = release.qualities.find((quality) => parseYoutubeId(quality.url));
   const videoId = embedSource ? parseYoutubeId(embedSource.url) : null;
   const [copied, setCopied] = useState(false);
@@ -31,7 +47,13 @@ export default function PlayerCard({ release }: { release: ReleaseDetail }) {
     <div className="space-y-5">
       <div className="panel scanlines relative overflow-hidden p-2">
         <div className="relative aspect-video overflow-hidden rounded-[0.9rem] bg-void-950">
-          {videoId ? (
+          {directVideoSource ? (
+            <VideoPlayer
+              src={directVideoSource}
+              poster={release.thumbnail}
+              title={`${release.title} — Sinhala dub`}
+            />
+          ) : videoId ? (
             <iframe
               className="h-full w-full"
               src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&color=white&autoplay=0`}
