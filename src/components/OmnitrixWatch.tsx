@@ -454,10 +454,10 @@ export default function OmnitrixWatch({
                 <line x1={CENTRE - 80} y1={CENTRE} x2={CENTRE + 80} y2={CENTRE} stroke="rgba(57,255,20,0.2)" strokeWidth="1" />
                 <line x1={CENTRE} y1={CENTRE - 80} x2={CENTRE} y2={CENTRE + 80} stroke="rgba(57,255,20,0.2)" strokeWidth="1" />
 
-                {/* PROJECTED ALIEN INSIDE THE WATCH FACE */}
-                <g filter="url(#omniGreenGlow)" className="transition-all duration-300">
+                {/* REAL FORM SHADOW SILHOUETTE INSIDE THE WATCH FACE */}
+                <g className="transition-all duration-300">
                   <g transform={`translate(${CENTRE - 52}, ${CENTRE - 52}) scale(1.625)`}>
-                    <AlienSilhouette alien={activeAlien} accent="#ffffff" />
+                    <AlienSilhouette alien={activeAlien} accent="#020904" />
                   </g>
                 </g>
 
@@ -476,26 +476,19 @@ export default function OmnitrixWatch({
                   y={CENTRE + 72}
                   textAnchor="middle"
                   fill="#39ff14"
-                  fontSize="11"
+                  fontSize="10"
                   fontFamily="monospace"
                   fontWeight="bold"
                   letterSpacing="2.5"
                   opacity="0.9"
                 >
-                  CLICK TO TRANSFORM
+                  PRESS TO TRANSFORM
                 </text>
               </svg>
-
-              {/* Spin Dial Tooltip Overlay */}
-              <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-center">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-omni-400/40 bg-void-950/80 px-3 py-1 font-display text-[0.65rem] font-bold tracking-wider text-omni-300 uppercase shadow-omni backdrop-blur-md">
-                  ⟲ Spin Dial to Cycle Aliens ⟳
-                </span>
-              </div>
             </motion.div>
           ) : (
             /* ======================================================= */
-            /* 2. TRANSFORMED STATE: NON-ROUNDED FULL PHOTO            */
+            /* 2. TRANSFORMED STATE: NON-ROUNDED FULL ALIEN PICKER     */
             /* ======================================================= */
             <motion.div
               key="alien-photo"
@@ -504,43 +497,41 @@ export default function OmnitrixWatch({
               exit={{ scale: 0.85, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               onClick={restoreWatch}
-              className="group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl border-4 shadow-omni-lg"
+              className="group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl border-4 shadow-omni-lg bg-void-950"
               style={{
                 borderColor: accent,
-                boxShadow: `0 0 35px -5px ${accent}, inset 0 0 30px rgba(0,0,0,0.8)`,
+                boxShadow: `0 0 35px -5px ${accent}, inset 0 0 40px rgba(0,0,0,0.9)`,
               }}
-              title="Click photo to restore watch"
+              title="Click alien to restore Omnitrix"
             >
-              {/* Full Action Photo of the Alien (Non-rounded, fills the frame) */}
-              <Image
-                src={activeAlien.image}
-                alt={activeAlien.name}
-                fill
-                priority
-                sizes="(max-width: 768px) 320px, 400px"
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-              />
+              {/* Full background-removed character render */}
+              <div className="relative h-full w-full p-4 flex items-center justify-center">
+                <Image
+                  src={activeAlien.image}
+                  alt={activeAlien.name}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 320px, 400px"
+                  className="object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)] transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+              </div>
 
-              {/* Cinematic Vignette & Glow Overlays */}
+              {/* Holographic energetic ambient glow */}
               <div
-                className="absolute inset-0 bg-linear-to-t from-void-950/90 via-transparent to-void-950/30"
-                style={{ mixBlendMode: "multiply" }}
-              />
-              <div
-                className="absolute inset-0 opacity-40 mix-blend-color-dodge transition-opacity duration-500 group-hover:opacity-75"
+                className="pointer-events-none absolute inset-0 opacity-30 mix-blend-color-dodge transition-opacity duration-500 group-hover:opacity-60"
                 style={{
                   background: `radial-gradient(circle at center, ${accent} 0%, transparent 70%)`,
                 }}
               />
 
-              {/* Pulsing energy border (Non-rounded, matching outer frame) */}
+              {/* Pulsing energy border */}
               <span
                 className="pointer-events-none absolute inset-0 rounded-2xl border-2 animate-pulse-ring"
                 style={{ borderColor: accent }}
               />
 
               {/* Alien Details Banner overlaying photo */}
-              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-linear-to-t from-void-950 via-void-950/80 to-transparent p-5 text-center">
+              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-linear-to-t from-void-950 via-void-950/85 to-transparent p-5 text-center pointer-events-none">
                 <span
                   className="rounded-full px-2.5 py-0.5 text-[0.62rem] font-black tracking-[0.25em] uppercase"
                   style={{
@@ -565,42 +556,11 @@ export default function OmnitrixWatch({
         </AnimatePresence>
       </div>
 
-      {/* Control Bar: Spin Controls & Status (No Restore Button) */}
+      {/* Pure Watch Face — Alien indicator only, no buttons */}
       {interactive && (
-        <div className="flex flex-col items-center gap-2">
-          {!isTransformed ? (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => spinRelative(-1)}
-                className="flex items-center gap-1.5 rounded-full border border-void-600 bg-void-900/80 px-3.5 py-1.5 font-display text-xs font-bold text-void-100 transition-colors hover:border-omni-400 hover:bg-omni-400/10 hover:text-omni-300 active:scale-95"
-                title="Spin Previous Alien (Left Arrow)"
-              >
-                ◀ Spin
-              </button>
-
-              <button
-                type="button"
-                onClick={triggerTransform}
-                className="rounded-full bg-linear-to-r from-omni-400 via-omni-500 to-omni-600 px-5 py-2 font-display text-xs font-black tracking-widest text-void-950 uppercase shadow-omni transition-transform hover:scale-105 active:scale-95"
-              >
-                Activate ({activeAlien.name})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => spinRelative(1)}
-                className="flex items-center gap-1.5 rounded-full border border-void-600 bg-void-900/80 px-3.5 py-1.5 font-display text-xs font-bold text-void-100 transition-colors hover:border-omni-400 hover:bg-omni-400/10 hover:text-omni-300 active:scale-95"
-                title="Spin Next Alien (Right Arrow)"
-              >
-                Spin ▶
-              </button>
-            </div>
-          ) : null}
-
-          {/* Active Alien Indicator */}
-          <p className="text-[0.7rem] font-bold tracking-[0.2em] text-void-300 uppercase">
-            {activeAlien.name} · {activeAlien.species} ({activeIndex + 1}/{SLOTS})
+        <div className="text-center">
+          <p className="text-[0.68rem] font-black tracking-[0.22em] text-void-300 uppercase">
+            {activeAlien.name} · {activeAlien.species}
           </p>
         </div>
       )}

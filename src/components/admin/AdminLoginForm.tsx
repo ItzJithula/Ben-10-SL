@@ -14,10 +14,9 @@ export default function AdminLoginForm() {
 
   useEffect(() => {
     if (state.ok) {
-      router.replace("/admin");
-      router.refresh();
+      window.location.href = "/admin";
     }
-  }, [state.ok, router]);
+  }, [state.ok]);
 
   return (
     <form action={formAction} className="space-y-5">

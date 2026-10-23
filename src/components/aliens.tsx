@@ -208,7 +208,8 @@ export function alienById(id: string): Alien | undefined {
 type ShapeProps = { cut: boolean; accent: string };
 
 function Shape({ shape, cut, accent }: { shape: AlienShape } & ShapeProps) {
-  const fill = cut ? "rgba(2,6,3,0.62)" : accent;
+  const isDarkShadow = accent === "#020904" || accent === "#000000";
+  const fill = cut ? (isDarkShadow ? "#39ff14" : "rgba(2,6,3,0.62)") : accent;
   switch (shape.t) {
     case "path":
       return <path d={shape.d} fill={fill} />;

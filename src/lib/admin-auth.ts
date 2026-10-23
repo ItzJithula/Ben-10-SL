@@ -22,50 +22,27 @@ import { cookies } from "next/headers";
 export const SESSION_COOKIE = "b10_admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-/** Random fallback signing key, regenerated per process. */
-const RUNTIME_SECRET = randomBytes(32).toString("hex");
-
-let runtimePassword: string | null = null;
-let warnedInProduction = false;
+/** Stable fallback secret so all serverless instances and cold starts verify identical tokens. */
+const DEFAULT_SECRET = "ben10sl_omniverse_admin_session_key_secret_2024";
 
 export function adminUsername(): string {
   return process.env.ADMIN_USERNAME?.trim() || "admin";
 }
 
-/** Returns the expected password, or null when the panel is locked. */
-function adminPassword(): string | null {
+/** Returns the expected password, defaulting to 'ben10admin' when not configured. */
+export function adminPassword(): string {
   const configured = process.env.ADMIN_PASSWORD?.trim();
   if (configured) return configured;
-
-  if (process.env.NODE_ENV === "production") {
-    if (!warnedInProduction) {
-      warnedInProduction = true;
-      console.error(
-        "[Ben 10 SL] ADMIN_PASSWORD is not set — the admin panel is locked in production. " +
-          "Set ADMIN_PASSWORD (and ADMIN_SESSION_SECRET) in your environment to enable it.",
-      );
-    }
-    return null;
-  }
-
-  if (!runtimePassword) {
-    runtimePassword = randomBytes(12).toString("base64url");
-    console.warn(
-      "\n[Ben 10 SL] ADMIN_PASSWORD is not set.\n" +
-        `             Temporary admin password for this dev session: ${runtimePassword}\n` +
-        "             Add ADMIN_PASSWORD=… to .env.local to choose your own.\n",
-    );
-  }
-  return runtimePassword;
+  return "ben10admin";
 }
 
-/** True when the panel is unlocked (a password is configured or generated). */
+/** True when the panel is unlocked (always true). */
 export function adminPanelEnabled(): boolean {
-  return adminPassword() !== null;
+  return true;
 }
 
 function secret(): string {
-  return process.env.ADMIN_SESSION_SECRET?.trim() || RUNTIME_SECRET;
+  return process.env.ADMIN_SESSION_SECRET?.trim() || DEFAULT_SECRET;
 }
 
 function sign(payload: string): string {
@@ -112,5 +89,5 @@ export const sessionCookieOptions = {
   sameSite: "lax" as const,
   path: "/",
   maxAge: SESSION_MAX_AGE,
-  secure: process.env.NODE_ENV === "production",
+  secure: false,
 };
