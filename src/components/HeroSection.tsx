@@ -69,26 +69,11 @@ export default function HeroSection({
       <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 pt-16 pb-20 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:pt-24 lg:pb-28">
         <div>
           <div className="mb-6 flex flex-wrap items-center gap-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full ring-2 ring-omni-400 shadow-[0_0_30px_rgba(57,255,20,0.85)] overflow-hidden bg-void-950"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoUrl || "https://i.ibb.co/99p93Zfc/file-66.jpg"}
-                alt="Ben 10 Logo"
-                className="h-full w-full object-cover"
-              />
-              <span className="pointer-events-none absolute inset-0 rounded-full border border-omni-300/40 animate-pulse-ring" />
-            </motion.div>
-
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-3 rounded-full border border-omni-400/40 bg-omni-400/10 px-4 py-2 text-[0.68rem] font-black tracking-[0.3em] text-omni-300 uppercase"
+              className="inline-flex items-center gap-3 rounded-full border border-omni-400/40 bg-omni-400/10 px-4 py-2 text-[0.68rem] font-black tracking-[0.3em] text-omni-300 uppercase shadow-[0_0_15px_rgba(57,255,20,0.2)]"
             >
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-omni-400 opacity-75" />
@@ -182,7 +167,7 @@ export default function HeroSection({
           initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
           animate={{ opacity: 1, scale: 1, rotate: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mx-auto flex items-center justify-center py-4"
+          className="relative mx-auto flex w-full max-w-[340px] items-center justify-center py-4"
         >
           <div className="absolute inset-0 -z-10 rounded-full bg-omni-400/15 blur-[90px]" />
           <OmnitrixWatch size={320} />

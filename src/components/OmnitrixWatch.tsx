@@ -44,7 +44,13 @@ export default function OmnitrixWatch({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const rotRef = useRef(0);
   const rafRef = useRef<number | null>(null);
-  const dragRef = useRef<{ pointerId: number; lastAngle: number } | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    lastAngle: number;
+    startX: number;
+    startY: number;
+    startTime: number;
+  } | null>(null);
   const travelledRef = useRef(0);
   const flashTimer = useRef<number | null>(null);
 
@@ -109,10 +115,17 @@ export default function OmnitrixWatch({
     if (!interactive || isTransformed) return;
     const next = (activeIndex + direction + SLOTS) % SLOTS;
     selectAlien(next, true);
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      try {
+        navigator.vibrate(10);
+      } catch {
+        // ignore
+      }
+    }
   };
 
   /* ---------------------------------------------------------------- */
-  /* Pointer Dragging                                                  */
+  /* Pointer Dragging & Mobile Touch Handling                          */
   /* ---------------------------------------------------------------- */
 
   const pointerAngle = (clientX: number, clientY: number) => {
@@ -123,13 +136,21 @@ export default function OmnitrixWatch({
     return (Math.atan2(clientY - cy, clientX - cx) * 180) / Math.PI;
   };
 
-  const onPointerDown = (event: React.PointerEvent) => {
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!interactive || isTransformed) return;
     if (event.button !== 0 && event.pointerType === "mouse") return;
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
     stopAnimation();
     dragRef.current = {
       pointerId: event.pointerId,
       lastAngle: pointerAngle(event.clientX, event.clientY),
+      startX: event.clientX,
+      startY: event.clientY,
+      startTime: performance.now(),
     };
     travelledRef.current = 0;
     setDragging(true);
@@ -151,22 +172,38 @@ export default function OmnitrixWatch({
       const idx = indexForRotation(rotRef.current);
       if (idx !== activeIndex) {
         setActiveIndex(idx);
+        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+          try {
+            navigator.vibrate(8);
+          } catch {
+            // ignore
+          }
+        }
       }
     };
 
     const onPointerUp = (event: PointerEvent) => {
       const state = dragRef.current;
       if (!state || state.pointerId !== event.pointerId) return;
+      const { startX, startY, startTime } = state;
       dragRef.current = null;
       setDragging(false);
-      if (travelledRef.current > 5) {
+
+      const dist = Math.hypot(event.clientX - startX, event.clientY - startY);
+      const elapsed = performance.now() - startTime;
+
+      if (travelledRef.current > 7 || dist > 18) {
+        // Dial was spun by dragging — snap to nearest alien notch
         const index = indexForRotation(rotRef.current);
         animateRotation(rotationForIndex(index));
         setActiveIndex(index);
+      } else if (dist <= 18 && elapsed < 450) {
+        // Clean mobile tap detected
+        triggerTransform();
       }
     };
 
-    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
     return () => {
@@ -181,7 +218,14 @@ export default function OmnitrixWatch({
   /* ---------------------------------------------------------------- */
 
   const triggerTransform = () => {
-    if (!interactive) return;
+    if (!interactive || isTransformed) return;
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      try {
+        navigator.vibrate([15, 30, 25]);
+      } catch {
+        // ignore
+      }
+    }
     setFlash(true);
     if (flashTimer.current !== null) clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setFlash(false), 700);
@@ -189,17 +233,27 @@ export default function OmnitrixWatch({
   };
 
   const restoreWatch = () => {
-    if (!interactive) return;
+    if (!interactive || !isTransformed) return;
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      try {
+        navigator.vibrate(12);
+      } catch {
+        // ignore
+      }
+    }
     setFlash(true);
     if (flashTimer.current !== null) clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setFlash(false), 700);
     setIsTransformed(false);
   };
 
-  const handleWatchClick = () => {
+  const handleWatchClick = (e: React.MouseEvent) => {
     if (!interactive) return;
-    if (travelledRef.current > 6) return;
-    triggerTransform();
+    e.stopPropagation();
+    if (travelledRef.current > 7) return;
+    if (!isTransformed) {
+      triggerTransform();
+    }
   };
 
   /* ---------------------------------------------------------------- */
@@ -275,8 +329,16 @@ export default function OmnitrixWatch({
 
       {/* Main Container - Switches between Watch and Full Photo */}
       <div
-        className="relative flex items-center justify-center outline-none focus:outline-none focus-visible:outline-none border-0"
-        style={{ width: size, height: size, outline: "none" }}
+        className="relative flex items-center justify-center outline-none focus:outline-none focus-visible:outline-none border-0 w-full aspect-square touch-none select-none"
+        style={{
+          maxWidth: size,
+          maxHeight: size,
+          width: "100%",
+          height: "auto",
+          aspectRatio: "1 / 1",
+          outline: "none",
+          touchAction: "none",
+        }}
         tabIndex={interactive ? 0 : undefined}
         onKeyDown={onKeyDown}
         role={interactive ? "region" : undefined}
@@ -295,11 +357,11 @@ export default function OmnitrixWatch({
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               ref={wrapRef}
               className={cx(
-                "group relative h-full w-full outline-none focus:outline-none focus-visible:outline-none",
+                "group relative h-full w-full aspect-square touch-none select-none outline-none focus:outline-none focus-visible:outline-none",
                 interactive && "cursor-pointer",
                 dragging && "cursor-grabbing",
               )}
-              style={{ outline: "none" }}
+              style={{ outline: "none", touchAction: "none" }}
               onPointerDown={onPointerDown}
               onClick={handleWatchClick}
             >
@@ -310,7 +372,7 @@ export default function OmnitrixWatch({
               />
 
               {/* High-tech SVG Omnitrix Watch Body */}
-              <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="relative h-full w-full overflow-visible outline-none">
+              <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="relative h-full w-full overflow-visible outline-none pointer-events-none">
                 <defs>
                   {/* Heavy graphite chassis */}
                   <radialGradient id="omniChassis" cx="50%" cy="32%" r="70%">
@@ -479,9 +541,13 @@ export default function OmnitrixWatch({
               exit={{ scale: 0.85, opacity: 0, y: 10 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               onClick={restoreWatch}
-              className="group relative flex h-full w-full cursor-pointer flex-col items-center justify-center select-none outline-none focus:outline-none"
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                restoreWatch();
+              }}
+              className="group relative flex h-full w-full cursor-pointer flex-col items-center justify-center select-none outline-none focus:outline-none touch-manipulation active:scale-[0.98] transition-transform"
               style={{ outline: "none" }}
-              title="Click alien to restore Omnitrix"
+              title="Tap alien to restore Omnitrix"
             >
               {/* Full standing character - completely uncropped, transparent background */}
               <div className="relative h-[84%] w-full flex items-center justify-center">
@@ -520,11 +586,59 @@ export default function OmnitrixWatch({
         </AnimatePresence>
       </div>
 
-      {/* Pure Watch Face — Alien indicator only, no buttons */}
+      {/* Pure Watch Face — Alien indicator & Mobile Touch Controls */}
       {interactive && !isTransformed && (
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <div className="flex items-center gap-3 sm:gap-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                spinRelative(-1);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-omni-400/30 bg-void-900/80 text-omni-400 transition-all hover:border-omni-400 hover:bg-omni-400/20 active:scale-90 touch-manipulation sm:hidden"
+              aria-label="Previous alien"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div className="min-w-[140px] text-center">
+              <p className="text-[0.72rem] font-black tracking-[0.22em] text-white uppercase drop-shadow-[0_0_8px_rgba(57,255,20,0.6)]">
+                {activeAlien.name}
+              </p>
+              <p className="text-[0.62rem] font-bold tracking-[0.18em] uppercase" style={{ color: accent }}>
+                {activeAlien.species}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                spinRelative(1);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-omni-400/30 bg-void-900/80 text-omni-400 transition-all hover:border-omni-400 hover:bg-omni-400/20 active:scale-90 touch-manipulation sm:hidden"
+              aria-label="Next alien"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <p className="text-[0.6rem] font-bold tracking-wider text-omni-400/80 uppercase">
+            Spin Dial · Tap to Transform
+          </p>
+        </div>
+      )}
+
+      {/* Transformed state restore hint */}
+      {interactive && isTransformed && (
         <div className="text-center">
-          <p className="text-[0.68rem] font-black tracking-[0.22em] text-void-300 uppercase">
-            {activeAlien.name} · {activeAlien.species}
+          <p className="text-[0.62rem] font-bold tracking-wider text-omni-300/90 uppercase animate-pulse">
+            Tap alien to restore Omnitrix
           </p>
         </div>
       )}

@@ -50,7 +50,19 @@ export async function generateMetadata(): Promise<Metadata> {
       "Ben 10 SL",
       "Sinhala dubbed cartoons",
     ],
-    icons: { icon: "/favicon.ico" },
+    icons: {
+      icon: [
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+        { url: "/favicon.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon.png", type: "image/png" },
+        { url: settings.logo_url || "https://i.ibb.co/99p93Zfc/file-66.jpg" },
+      ],
+      apple: [
+        { url: "/apple-touch-icon.png", sizes: "180x180" },
+        { url: "/apple-icon.png" },
+        { url: settings.logo_url || "https://i.ibb.co/99p93Zfc/file-66.jpg" },
+      ],
+    },
     openGraph: {
       title: `${settings.site_name || "Ben 10 SL"} — ${settings.site_tagline || "Sinhala Dubbed Episodes"}`,
       description: settings.site_description || "Ben 10 Sinhala Dubbed Episodes",
@@ -67,6 +79,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+      </head>
       <body className="min-h-dvh antialiased">
         <Preloader />
         <SmoothScroll>
