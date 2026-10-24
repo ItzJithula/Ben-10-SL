@@ -4,6 +4,7 @@ import "./globals.css";
 
 import BackToTop from "@/components/BackToTop";
 import PageFade from "@/components/PageFade";
+import Preloader from "@/components/Preloader";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import SmoothScroll from "@/components/SmoothScroll";
@@ -54,7 +55,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: `${settings.site_name || "Ben 10 SL"} — ${settings.site_tagline || "Sinhala Dubbed Episodes"}`,
       description: settings.site_description || "Ben 10 Sinhala Dubbed Episodes",
       type: "website",
-      images: [settings.hero_image || "/art/hero-alien-tech.jpg"],
+      images: [settings.logo_url || settings.hero_image || "https://i.ibb.co/99p93Zfc/file-66.jpg"],
     },
   };
 }
@@ -67,6 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-dvh antialiased">
+        <Preloader />
         <SmoothScroll>
           <SiteHeader settings={settings} categories={categories} />
           <main>

@@ -9,7 +9,8 @@ export default function HeroSection({
   kicker = "100% Sinhala Dub",
   title = "Every Ben 10 Series in Sinhala",
   subtitle = "From Classic to Omniverse — every episode and movie, fully dubbed in Sinhala and free to watch.",
-  image = "/art/hero-alien-tech.jpg",
+  image = "https://i.ibb.co/99p93Zfc/file-66.jpg",
+  logoUrl = "https://i.ibb.co/99p93Zfc/file-66.jpg",
   telegramUrl = "https://t.me/ben10sl",
   stats = { releases: 22, episodes: 16, movies: 5, hours: 14 },
 }: {
@@ -17,6 +18,7 @@ export default function HeroSection({
   title?: string;
   subtitle?: string;
   image?: string;
+  logoUrl?: string;
   telegramUrl?: string;
   stats?: { releases: number; episodes: number; movies: number; hours: number };
 }) {
@@ -66,18 +68,35 @@ export default function HeroSection({
 
       <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 pt-16 pb-20 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:pt-24 lg:pb-28">
         <div>
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-5 inline-flex items-center gap-3 rounded-full border border-omni-400/40 bg-omni-400/10 px-4 py-2 text-[0.68rem] font-black tracking-[0.3em] text-omni-300 uppercase"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-omni-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-omni-400" />
-            </span>
-            {kicker}
-          </motion.p>
+          <div className="mb-6 flex flex-wrap items-center gap-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full ring-2 ring-omni-400 shadow-[0_0_30px_rgba(57,255,20,0.85)] overflow-hidden bg-void-950"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoUrl || "https://i.ibb.co/99p93Zfc/file-66.jpg"}
+                alt="Ben 10 Logo"
+                className="h-full w-full object-cover"
+              />
+              <span className="pointer-events-none absolute inset-0 rounded-full border border-omni-300/40 animate-pulse-ring" />
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-3 rounded-full border border-omni-400/40 bg-omni-400/10 px-4 py-2 text-[0.68rem] font-black tracking-[0.3em] text-omni-300 uppercase"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-omni-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-omni-400" />
+              </span>
+              {kicker}
+            </motion.p>
+          </div>
 
           <h1 className="font-display text-4xl leading-[1.05] font-black tracking-tight text-white uppercase sm:text-5xl lg:text-6xl">
             {words.map((word, index) => (

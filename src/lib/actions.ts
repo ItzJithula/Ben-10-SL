@@ -234,8 +234,21 @@ export async function saveReleaseAction(_prev: ActionState, form: FormData): Pro
 
   const qualities = parseQualities(form);
   const requestedSlug = str(form, "slug") || title;
-  const requestedCode =
-    str(form, "code") || `B10-${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  let requestedCode = str(form, "code");
+  if (!requestedCode) {
+    const cat = await queryOne<{ slug: string }>("SELECT slug FROM categories WHERE id = $1", [categoryId]);
+    const slugMap: Record<string, string> = {
+      classic: "B10-CL",
+      "alien-force": "B10-AF",
+      "ultimate-alien": "B10-UA",
+      omniverse: "B10-OV",
+      reboot: "B10-RB",
+      "movies-specials": "B10-MV",
+    };
+    const prefix = (cat && slugMap[cat.slug]) || (cat ? `B10-${cat.slug.slice(0, 3).toUpperCase()}` : "B10");
+    const epNum = nullableInt(form, "episode_number");
+    requestedCode = epNum ? `${prefix}-${String(epNum).padStart(3, "0")}` : `${prefix}-${Date.now().toString(36).toUpperCase().slice(-4)}`;
+  }
 
   let slug = "";
 

@@ -57,7 +57,44 @@ export default function ReleaseForm({
 }) {
   const [state, formAction, pending] = useActionState(saveReleaseAction, INITIAL);
 
-  const [slug, setSlug] = useState(release?.slug ?? "");
+  const [categoryId, setCategoryId] = useState<number>(
+    release?.category_id ?? (categories[0]?.id || 1)
+  );
+  const [season, setSeason] = useState<number>(release?.season ?? 1);
+  const [episodeNumber, setEpisodeNumber] = useState<string | number>(
+    release?.episode_number ?? ""
+  );
+  const [episodeType, setEpisodeType] = useState<string>(
+    release?.episode_type ?? "episode"
+  );
+
+  function getAutoCode(catId: number, s: number, ep: string | number, type: string) {
+    const cat = categories.find((c) => c.id === Number(catId));
+    const slugMap: Record<string, string> = {
+      classic: "B10-CL",
+      "alien-force": "B10-AF",
+      "ultimate-alien": "B10-UA",
+      omniverse: "B10-OV",
+      reboot: "B10-RB",
+      "movies-specials": "B10-MV",
+    };
+    const prefix =
+      (cat && slugMap[cat.slug]) ||
+      (cat ? `B10-${cat.slug.slice(0, 3).toUpperCase()}` : "B10");
+    if (type === "movie") return `${prefix}-MOV-${String(ep || 1).padStart(2, "0")}`;
+    if (type === "special") return `${prefix}-SP-${String(ep || 1).padStart(2, "0")}`;
+    if (ep !== "" && ep !== null && ep !== undefined && !isNaN(Number(ep))) {
+      return `${prefix}-${String(ep).padStart(3, "0")}`;
+    }
+    return `${prefix}-S${String(s || 1).padStart(2, "0")}`;
+  }
+
+  const [code, setCode] = useState(
+    release?.code || getAutoCode(categoryId, season, episodeNumber, episodeType)
+  );
+  const [codeTouched, setCodeTouched] = useState(Boolean(release?.code));
+
+  const [slug, setSlug] = useState(release?.slug || (release?.title ? slugify(release.title) : ""));
   const [slugTouched, setSlugTouched] = useState(Boolean(release?.slug));
   const [title, setTitle] = useState(release?.title ?? "");
   const [qualities, setQualities] = useState<QualityInput[]>(
@@ -78,8 +115,11 @@ export default function ReleaseForm({
     <form action={formAction} className="space-y-6">
       {release ? <input type="hidden" name="id" value={release.id} /> : null}
       <input type="hidden" name="qualities_json" value={qualitiesJson} />
-      <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="language" value="sinhala" />
+      {/* Hidden dub fields to maintain backwards compatibility while Dub Information UI is removed */}
+      <input type="hidden" name="dubbed_studio" value={release?.dubbed_studio || "Cartoon Network (Sinhala dub)"} />
+      <input type="hidden" name="dubbed_date" value={release?.dubbed_date || ""} />
+      <input type="hidden" name="aired_date" value={release?.aired_date || ""} />
 
       {state.message && !state.ok ? (
         <p className="rounded-xl border border-alien-red/40 bg-alien-red/10 px-4 py-3 text-xs font-bold text-alien-red">
@@ -97,7 +137,14 @@ export default function ReleaseForm({
           <Field label="Collection" error={state.fieldErrors?.category_id}>
             <select
               name="category_id"
-              defaultValue={release?.category_id ?? categories[0]?.id ?? 0}
+              value={categoryId}
+              onChange={(event) => {
+                const newCatId = Number(event.target.value);
+                setCategoryId(newCatId);
+                if (!codeTouched) {
+                  setCode(getAutoCode(newCatId, season, episodeNumber, episodeType));
+                }
+              }}
               className={inputClass}
               required
             >
@@ -109,8 +156,38 @@ export default function ReleaseForm({
             </select>
           </Field>
 
-          <Field label="Release code" hint="e.g. B10-CL-007">
-            <input name="code" defaultValue={release?.code ?? ""} className={inputClass} placeholder="B10-CL-007" />
+          <Field
+            label="Release code"
+            hint={
+              <button
+                type="button"
+                onClick={() => {
+                  setCodeTouched(false);
+                  setCode(getAutoCode(categoryId, season, episodeNumber, episodeType));
+                }}
+                className="text-[0.62rem] font-bold text-omni-300 hover:underline"
+              >
+                ⚡ Auto-generate
+              </button> as unknown as string
+            }
+          >
+            <div className="relative">
+              <input
+                name="code"
+                value={code}
+                onChange={(event) => {
+                  setCodeTouched(true);
+                  setCode(event.target.value);
+                }}
+                className={inputClass}
+                placeholder="e.g. B10-CL-001"
+              />
+              {!codeTouched ? (
+                <span className="pointer-events-none absolute right-3 top-2.5 rounded bg-omni-400/20 px-2 py-0.5 text-[0.6rem] font-black tracking-wider text-omni-300 uppercase">
+                  Auto
+                </span>
+              ) : null}
+            </div>
           </Field>
 
           <Field label="Title" error={state.fieldErrors?.title}>
@@ -118,8 +195,9 @@ export default function ReleaseForm({
               name="title"
               value={title}
               onChange={(event) => {
-                setTitle(event.target.value);
-                if (!slugTouched) setSlug(slugify(event.target.value));
+                const val = event.target.value;
+                setTitle(val);
+                if (!slugTouched) setSlug(slugify(val));
               }}
               className={inputClass}
               placeholder="And Then There Were 10"
@@ -136,20 +214,54 @@ export default function ReleaseForm({
             />
           </Field>
 
-          <Field label="URL slug" hint="the part shown in the web address">
-            <input
-              value={slug}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setSlug(slugify(event.target.value));
-              }}
-              className={inputClass}
-              placeholder="and-then-there-were-10"
-            />
+          <Field
+            label="URL slug"
+            hint={
+              <button
+                type="button"
+                onClick={() => {
+                  setSlugTouched(false);
+                  setSlug(slugify(title));
+                }}
+                className="text-[0.62rem] font-bold text-omni-300 hover:underline"
+              >
+                ⚡ Auto-generate
+              </button> as unknown as string
+            }
+          >
+            <div className="relative">
+              <input
+                name="slug"
+                value={slug}
+                onChange={(event) => {
+                  setSlugTouched(true);
+                  setSlug(slugify(event.target.value));
+                }}
+                className={inputClass}
+                placeholder="and-then-there-were-10"
+                required
+              />
+              {!slugTouched ? (
+                <span className="pointer-events-none absolute right-3 top-2.5 rounded bg-omni-400/20 px-2 py-0.5 text-[0.6rem] font-black tracking-wider text-omni-300 uppercase">
+                  Auto
+                </span>
+              ) : null}
+            </div>
           </Field>
 
           <Field label="Episode type">
-            <select name="episode_type" defaultValue={release?.episode_type ?? "episode"} className={inputClass}>
+            <select
+              name="episode_type"
+              value={episodeType}
+              onChange={(event) => {
+                const newType = event.target.value;
+                setEpisodeType(newType);
+                if (!codeTouched) {
+                  setCode(getAutoCode(categoryId, season, episodeNumber, newType));
+                }
+              }}
+              className={inputClass}
+            >
               {TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
@@ -164,7 +276,14 @@ export default function ReleaseForm({
                 name="season"
                 type="number"
                 min={0}
-                defaultValue={release?.season ?? 1}
+                value={season}
+                onChange={(event) => {
+                  const newSeason = Number(event.target.value);
+                  setSeason(newSeason);
+                  if (!codeTouched) {
+                    setCode(getAutoCode(categoryId, newSeason, episodeNumber, episodeType));
+                  }
+                }}
                 className={inputClass}
               />
             </Field>
@@ -173,7 +292,14 @@ export default function ReleaseForm({
                 name="episode_number"
                 type="number"
                 min={0}
-                defaultValue={release?.episode_number ?? ""}
+                value={episodeNumber}
+                onChange={(event) => {
+                  const newEp = event.target.value;
+                  setEpisodeNumber(newEp);
+                  if (!codeTouched) {
+                    setCode(getAutoCode(categoryId, season, newEp, episodeType));
+                  }
+                }}
                 className={inputClass}
                 placeholder="1"
               />
@@ -292,54 +418,11 @@ export default function ReleaseForm({
         </div>
       </section>
 
-      {/* ---------------------------------------------------- dub info */}
-      <section className="panel p-6">
-        <h2 className="mb-5 font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-          3 · Dub information
-        </h2>
-
-        <div className="grid gap-5 sm:grid-cols-3">
-          <Field label="Dub studio">
-            <input
-              name="dubbed_studio"
-              defaultValue={release?.dubbed_studio ?? "SL Dubbing Team"}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Dubbed on">
-            <input
-              name="dubbed_date"
-              type="date"
-              defaultValue={release?.dubbed_date ?? ""}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Original air date">
-            <input
-              name="aired_date"
-              type="date"
-              defaultValue={release?.aired_date ?? ""}
-              className={inputClass}
-            />
-          </Field>
-
-          <div className="sm:col-span-3 flex items-center gap-3 rounded-xl border border-omni-400/30 bg-omni-400/8 px-4 py-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-omni-400/20 text-omni-300">
-              ✓
-            </span>
-            <p className="text-xs leading-relaxed text-void-100">
-              Every release on this site is stored as a <strong className="text-omni-300">Sinhala dub</strong> —
-              no other audio language can be selected.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* ---------------------------------------------------- links */}
       <section className="panel p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="font-display text-sm font-black tracking-[0.2em] text-omni-300 uppercase">
-            4 · Download links
+            3 · Download links
           </h2>
           <button
             type="button"

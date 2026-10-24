@@ -52,6 +52,7 @@ export default async function HomePage() {
         title={settings.hero_title}
         subtitle={settings.hero_subtitle}
         image={settings.hero_image}
+        logoUrl={settings.logo_url}
         telegramUrl={settings.telegram_url}
         stats={{
           releases: stats.releases,

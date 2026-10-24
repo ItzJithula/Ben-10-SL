@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   hero_title: "Every Ben 10 Series in Sinhala",
   hero_subtitle:
     "From Classic to Omniverse — every episode and movie, fully dubbed in Sinhala and free to watch.",
-  hero_image: "/art/hero-alien-tech.jpg",
+  hero_image: "https://i.ibb.co/99p93Zfc/file-66.jpg",
   featured_youtube: "",
   telegram_url: "https://t.me/ben10sl",
   telegram_requests: "https://t.me/ben10sl",

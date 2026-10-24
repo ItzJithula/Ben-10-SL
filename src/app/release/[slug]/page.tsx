@@ -43,8 +43,6 @@ export default async function ReleasePage({ params }: { params: Params }) {
     { label: "Release code", value: release.code || "—" },
     { label: "Collection", value: release.category_name },
     { label: "Type", value: episodeLabel(release) },
-    { label: "Dub studio", value: release.dubbed_studio || "—" },
-    { label: "Dubbed on", value: formatDateLong(release.dubbed_date) },
     { label: "Original air date", value: formatDateLong(release.aired_date) },
     { label: "Runtime", value: `${release.duration_minutes} min` },
     { label: "Views", value: formatViews(release.views) },
